@@ -2,6 +2,8 @@ import fs from "fs";
 import bencode from "bencode";
 import crypto from "crypto";
 import net from 'net';
+import * as util from './utils.js';
+import * as message from './message.js';
 import ProgressBar from "progress";
 
 const BLOCK_SIZE = 16384;
@@ -39,7 +41,7 @@ for (let i = 0; i < numPieces; i++) {
   console.log(`PIECE ${i}:`, Buffer.from(hash).toString('hex'));
 }
 
-const peerId = Buffer.from("-JS0001-" + crypto.randomBytes(12).toString("hex").slice(0, 12));
+const peerId = util.genPeerID();
 
 // url encode raw bytes
 function encode(buf) {
@@ -101,13 +103,13 @@ const socket = net.createConnection(
     console.log("CONNECTED TO PEER: ", randomPeer);
 
     // send something
-    const handshake = buildHandshake(infoHash, peerId);
+    const handshake = message.buildHandshake(torrent);
     console.log("HANDSHAKE:" + handshake);
     socket.write(
       handshake
     );
 
-    sendInterested(socket);
+    socket.write(message.buildInterest());
   }
 );
 
@@ -154,28 +156,6 @@ socket.on("data", data => {
 socket.on("error", err => {
   console.log("ERROR:", err.message);
 });
-
-function buildHandshake(infoHash, peerId) {
-  const buf = Buffer.alloc(68);
-
-  buf.writeUInt8(19, 0);                           
-  buf.write("BitTorrent protocol", 1);             
-  buf.fill(0, 20, 28);                              
-  infoHash.copy(buf, 28);                           
-  peerId.copy(buf, 48);                             
-
-  return buf;
-}
-
-function sendInterested(socket) {
-  const buf = Buffer.alloc(5);
-
-  buf.writeUInt32BE(1, 0); // length = 1
-  buf.writeUInt8(2, 4);   // id = 2 (interested)
-
-  socket.write(buf);
-  console.log("SENT INTERESTED");
-}
 
 function buildRequest(pieceIndex, begin, length) {
   const buf = Buffer.alloc(17);
