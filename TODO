@@ -1,0 +1,4 @@
+- add a timeout for request during handshake
+- add better cli interfaces with flags,...
+- add loading animation if needed
+- optimize performance (suggest: adding threads)
