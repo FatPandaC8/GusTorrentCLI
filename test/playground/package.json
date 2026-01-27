@@ -1,21 +1,16 @@
 {
-  "name": "bitorrent",
+  "name": "playground",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "test.js",
   "scripts": {
-    "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bencode": "^4.0.0",
+    "cli-progress": "^3.12.0",
     "progress": "^2.0.3"
-  },
-  "devDependencies": {
-    "@types/bencode": "^2.0.4"
-  },
-  "type": "module"
+  }
 }

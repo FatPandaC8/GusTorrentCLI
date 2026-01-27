@@ -2,6 +2,7 @@ import fs from "fs";
 import bencode from "bencode";
 import crypto from "crypto";
 import net from 'net';
+import ProgressBar from "progress";
 
 const BLOCK_SIZE = 16384;
 const torrent = bencode.decode(fs.readFileSync("sample.torrent"));
@@ -14,8 +15,6 @@ let pieceSize = Math.min(
 
 let received = 0;
 let pieceBuffer = Buffer.alloc(pieceSize);
-
-// read torrent file
 
 // ---- INFO HASH ----
 const infoBencoded = bencode.encode(torrent.info);
@@ -31,8 +30,6 @@ console.log("INFO HASH:", infoHash.toString('hex'));
 // ---- PIECE HASHES ----
 const pieces = torrent.info.pieces;
 const numPieces = pieces.length / 20;
-
-console.log("TOTAL PIECES:", numPieces);
 
 const pieceHashes = [];
 
@@ -97,14 +94,11 @@ function getRandomPeer(max) {
 
 const randomPeerId = getRandomPeer(trackerResponse.peers.length / 6);
 const randomPeer = decodePeer(Buffer.from(trackerResponse.peers)).at(randomPeerId);
-console.log("PEER:", randomPeer);
-
-const options = new Uint8Array([2])
 
 const socket = net.createConnection(
   { host: randomPeer.ip, port: randomPeer.port },
   () => {
-    console.log("CONNECTED TO PEER ");
+    console.log("CONNECTED TO PEER: ", randomPeer);
 
     // send something
     const handshake = buildHandshake(infoHash, peerId);
@@ -117,11 +111,16 @@ const socket = net.createConnection(
   }
 );
 
+var bar = new ProgressBar('Downloading [:bar] :percent :etas', {
+  complete: '=',
+  incomplete: ' ',
+  width: 20,
+  total: torrent.info.length
+});
+
 socket.on("data", data => {
-  console.log("RECEIVED LEN:", data.length);
-  console.log("RECEIVED:", data);
   const id = data.readUint8(4);
-  console.log("ID", id)
+  console.log("PEER MESSAGE ID:", id)
   if (id === 1) {
     console.log("UNCHOKED - SEND REQUEST")
     requestBlock(0);
@@ -131,6 +130,7 @@ socket.on("data", data => {
     const begin = data.readUInt32BE(9);
     const block = data.slice(13);
     console.log("BLOCK RECEIVED:", pieceIndex, begin, block.length);
+    bar.tick(block.length)
 
     // store block in correct position
     block.copy(pieceBuffer, begin);
