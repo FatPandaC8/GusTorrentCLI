@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import { Buffer } from 'buffer';
 import { URL } from 'url';
 
-import * as util from '../utils.js'
+import * as util from './utils.js'
 import * as torrentParser from './torrent-parser.js';
 
 export const getPeers = (torrent, callback) => {
@@ -18,19 +18,24 @@ export const getPeers = (torrent, callback) => {
     // const announceURL = torrent.announce.toString('utf-8'); == only a string
     const announceURL = new URL(new TextDecoder().decode(torrent.announce)); // an URL object
     
-    if (announceURL.startsWith("udp")) {
-        udpSend(socket, buildConnectReq(), announceURL);
-    } else if (announceURL.startsWith("http")) { // a fallback in case torrent does not use udp
-        // tcpSend(socket, buildConnReq(), announceURL);
-        console.log("TODO: add tcp connection here")
-    }
+    udpSend(socket, buildConnectReq(), announceURL);
+    // if (announceURL.startsWith("udp")) {
+    // } else if (announceURL.startsWith("http")) { // a fallback in case torrent does not use udp
+    //     // tcpSend(socket, buildConnReq(), announceURL);
+    //     console.log("TODO: add tcp connection here")
+    // }
 
     socket.on('message', response => {
-        if (respType(response) === 'connect') {
+        const type = respType(response);
+        if (!type) return;
+
+        if (type === 'connect') {
             const connResp = parseConnectResp(response);
-            const announceResp = buildAnnounceReq(connResp.connectionId);
-            udpSend(socket, announceResp, announceURL);
-        } else if (respType(response) === 'announce') {
+            const announceReq = buildAnnounceReq(connResp.connectionId);
+            udpSend(socket, announceReq, announceURL);
+        }
+
+        if (type === 'announce') {
             const announceResp = parseAnnounceResp(response);
             callback(announceResp.peers);
         }
@@ -38,9 +43,12 @@ export const getPeers = (torrent, callback) => {
 };
 
 function respType(resp) {
+    if (resp.length < 4) return null;
+
     const action = resp.readUInt32BE(0);
     if (action === 0) return "connect";
     if (action === 1) return "announce";
+    return null;
 }
 
 function udpSend(socket, message, rawURL, callback = (err) => {
@@ -48,7 +56,7 @@ function udpSend(socket, message, rawURL, callback = (err) => {
 }) {
     socket.send(
         message,
-        0,
+        6881,
         message.length,
         rawURL.port,
         rawURL.hostname,
