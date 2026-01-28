@@ -1,6 +1,6 @@
 "use strict";
-import * as util from './utils.js';
-import * as fromTorrent from './torrent-parser.js';
+import * as util from '../src/utils.js';
+import * as fromTorrent from '../src/torrent-parser.js';
 
 export function buildHandshake(torrent) {
     /*
@@ -54,7 +54,7 @@ export function buildChoke() {
     const buf = Buffer.alloc(5);
 
     buf.writeUint32BE(1, 0);
-    buf.writeUint8(1, 4);
+    buf.writeUint8(0, 4);
     return buf;
 }
 
@@ -181,14 +181,14 @@ export function buildPort(payload) {
     */
     const buf = Buffer.alloc(7);
     buf.writeUInt32BE(3, 0);
-    buf.writeUInt32BE(9, 4);
+    buf.writeUint8(9, 4);
     buf.writeUInt16BE(payload, 5);
 
     return buf;
 }
 
 export function parse(msg) {
-    const size = msg.readInt32BE(0);
+    const size = msg.readUInt32BE(0);
     const id = msg.length > 4 ? msg.readInt8(4) : null;
     let payload = msg.length > 5 ? msg.slice(5) : null;
 
