@@ -1,9 +1,8 @@
 import * as util from './src/utils.js';
 import * as torrentParser from "./src/torrent-parser.js";
-import ProgressBar from "progress";
-import { getPeersHTTP } from "./tracker/httpTracker.js";
-import { PieceManager } from "./torrent/PieceManager.js";
-import { PeerConnection } from "./peer/PeerConnection.js";
+import { getPeersHTTP } from "./src/tracker/httpTracker.js";
+import { PieceManager } from "./src/torrent/PieceManager.js";
+import { PeerConnection } from "./src/peer/PeerConnection.js";
 
 async function main() {
   try {
@@ -34,15 +33,10 @@ async function main() {
     }
     
     console.log(`Found ${peers.length} peers`);
+    console.log(peers);
 
     // Initialize piece manager
     const pm = new PieceManager(torrent);
-
-    // Create progress bar
-    const bar = new ProgressBar('Downloading [:bar] :percent :etas', {
-      width: 40,
-      total: torrent.info.length
-    });
 
     // Try connecting to peers (try multiple if first fails)
     let connected = false;
@@ -51,7 +45,7 @@ async function main() {
       console.log(`\nTrying peer ${i + 1}: ${peer.ip}:${peer.port}`);
       
       try {
-        const conn = new PeerConnection(peer, torrent, pm, bar);
+        const conn = new PeerConnection(peer, torrent, pm);
         conn.connect();
         connected = true;
         

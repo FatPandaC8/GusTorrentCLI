@@ -3,11 +3,10 @@ import * as message from "../tracker/message.js";
 import { MessageParser } from "./MessageParser.js";
 
 export class PeerConnection {
-  constructor(peer, torrent, pieceManager, bar) {
+  constructor(peer, torrent, pieceManager) {
     this.peer = peer;
     this.torrent = torrent;
     this.pm = pieceManager;
-    this.bar = bar;
     this.parser = new MessageParser();
     this.bitfield = null;
     this.handshakeReceived = false;
@@ -117,7 +116,6 @@ export class PeerConnection {
     // Piece
     if (id === 7) {
       this.pm.addBlock(payload.begin, payload.block);
-      this.bar.tick(payload.block.length);
 
       if (this.pm.isComplete()) {
         if (!this.pm.verify()) {

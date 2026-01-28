@@ -1,6 +1,6 @@
 "use strict";
-import * as util from '../src/utils.js';
-import * as fromTorrent from '../src/torrent-parser.js';
+import * as util from '../utils.js';
+import * as fromTorrent from '../torrent-parser.js';
 
 export function buildHandshake(torrent) {
     const buf = Buffer.alloc(68);
