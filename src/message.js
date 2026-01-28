@@ -1,6 +1,6 @@
 "use strict";
 import * as util from './utils.js';
-import * as fromTorrent from './torrent.js';
+import * as fromTorrent from './torrent-parser.js';
 
 export function buildHandshake(torrent) {
     /*

@@ -2,12 +2,13 @@ import fs from "fs";
 import bencode from "bencode";
 import crypto from "crypto";
 import net from 'net';
-import * as util from './utils.js';
-import * as message from './message.js';
+import * as util from './src/utils.js';
+import * as message from './src/message.js';
+import * as torrentParser from "./src/torrent-parser.js";
 import ProgressBar from "progress";
 
 const BLOCK_SIZE = 16384;
-const torrent = bencode.decode(fs.readFileSync("sample.torrent"));
+const torrent = torrentParser.open(process.argv[2]);
 
 let currentPiece = 0;
 let pieceSize = Math.min(
@@ -25,7 +26,7 @@ const decorder = new TextDecoder('utf-8');
 
 console.log("TRACKER:", decorder.decode(torrent.announce));
 console.log("NAME:", decorder.decode(torrent.info.name));
-console.log("FILE LENGTH:", torrent.info.length);
+console.log("FILE LENGTH:", torrentParser.fileSize(torrent));
 console.log("PIECE LENGTH:", torrent.info['piece length']);
 console.log("INFO HASH:", infoHash.toString('hex'));
 
