@@ -9,6 +9,8 @@ export class PieceManager {
     this.currentPiece = 0;
     this.pieceLength = torrent.info['piece length'];
     this.pieces = torrent.info.pieces;
+    this.totalPieces = this.pieces.length / 20;
+    this.downloadedPieces = [];
     this.resetPiece();
   }
 
@@ -36,7 +38,6 @@ export class PieceManager {
   }
 
   isComplete() {
-    console.log("COMPLETED");
     return this.received >= this.pieceSize;
   }
 
@@ -55,6 +56,26 @@ export class PieceManager {
   }
 
   save() {
-    fs.writeFileSync(`piece${this.currentPiece}.bin`, this.buffer);
+    const filename = `piece${this.currentPiece}.bin`;
+    fs.writeFileSync(filename, this.buffer);
+    this.downloadedPieces.push(this.currentPiece);
+    console.log(`Saved ${filename} (${this.downloadedPieces.length}/${this.totalPieces})`);
+  }
+
+  moveToNextPiece() {
+    this.currentPiece++;
+    if (this.currentPiece < this.totalPieces) {
+      this.resetPiece();
+      return true;
+    }
+    return false;
+  }
+
+  getProgress() {
+    return {
+      current: this.currentPiece,
+      total: this.totalPieces,
+      percentage: ((this.downloadedPieces.length / this.totalPieces) * 100).toFixed(2)
+    };
   }
 }

@@ -12,14 +12,18 @@ export function infoHash(torrent) {
   return crypto.createHash("sha1").update(info).digest();
 }
 
-export function fileSize(torrent) {
+export function size(torrent) {
   const fileSize = torrent.info.files
     ? torrent.info.files
       .map((file) => file.length)
-      .reduce((acc, curr) => acc + curr) // iterate over an array and condense it into a single value
+      .reduce((acc, curr) => acc + curr)
     : torrent.info.length;
 
   return fileSize;
+}
+
+export function fileSize(torrent) {
+  return size(torrent);
 }
 
 export function open(filePath) {
@@ -28,7 +32,7 @@ export function open(filePath) {
 }
 
 export function pieceLen(torrent, pieceIndex) {
-  const totalLength = Number(toBigIntBE(size(torrent)));
+  const totalLength = Number(size(torrent));
   const pieceLength = torrent.info["piece length"];
 
   const lastPieceLength = totalLength % pieceLength;
@@ -48,4 +52,8 @@ export function blockLen(torrent, pieceIndex, blockIndex) {
   const lastBlockIndex = Math.floor(pieceLength / BLOCK_LENGTH);
 
   return blockIndex === lastBlockIndex ? lastBlockLength : BLOCK_LENGTH;
+}
+
+export function numPieces(torrent) {
+  return torrent.info.pieces.length / 20;
 }
