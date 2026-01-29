@@ -49,7 +49,7 @@ What to expect:
 
 ## Program flow
 
-
+![chart flow](diagram-export-1-29-2026-1_40_40-AM.png)
 ----
 
 ## Architecture 
