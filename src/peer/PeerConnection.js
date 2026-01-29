@@ -37,6 +37,14 @@ export class PeerConnection {
 
   onData(data) {
     // Handle handshake first (68 bytes)
+    // handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
+    //     pstrlen: string length of <pstr>, as a single raw byte
+    //     pstr: string identifier of the protocol
+    //     reserved: eight (8) reserved bytes. All current implementations use all zeroes. Each bit in these bytes can be used to change the behavior of the protocol. An email from Bram suggests that trailing bits should be used first, so that leading bits may be used to change the meaning of trailing bits.
+    //     info_hash: 20-byte SHA1 hash of the info key in the metainfo file. This is the same info_hash that is transmitted in tracker requests.
+    //     peer_id: 20-byte string used as a unique ID for the client. This is usually the same peer_id that is transmitted in tracker requests (but not always e.g. an anonymity option in Azureus).
+    // In version 1.0 of the BitTorrent protocol, pstrlen = 19, and pstr = "BitTorrent protocol". 
+    
     if (!this.handshakeReceived && data.length >= 68) {
       console.log("Handshake received");
       this.handshakeReceived = true;

@@ -1,7 +1,9 @@
 import crypto from "crypto";
 import fs from "fs";
 
-const BLOCK_SIZE = 16384;
+// The reality is near all clients will now use 2^14 (16KB) requests. 
+// Due to clients that enforce that size, it is recommended that implementations make requests of that size
+const BLOCK_SIZE = Math.pow(2, 14);
 
 export class PieceManager {
   constructor(torrent) {
@@ -9,6 +11,7 @@ export class PieceManager {
     this.currentPiece = 0;
     this.pieceLength = torrent.info['piece length'];
     this.pieces = torrent.info.pieces;
+    // string consisting of the concatenation of all 20-byte SHA1 hash values, one per piece (byte string, i.e. not urlencoded)
     this.totalPieces = this.pieces.length / 20;
     this.downloadedPieces = [];
     this.resetPiece();
@@ -69,13 +72,5 @@ export class PieceManager {
       return true;
     }
     return false;
-  }
-
-  getProgress() {
-    return {
-      current: this.currentPiece,
-      total: this.totalPieces,
-      percentage: ((this.downloadedPieces.length / this.totalPieces) * 100).toFixed(2)
-    };
   }
 }

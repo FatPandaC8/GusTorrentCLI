@@ -34,7 +34,7 @@ export async function getPeersHTTP(torrent, peerId) {
     const response = bencode.decode(buf);
 
     if (response['failure reason']) {
-    throw new Error(response['failure reason'].toString());
+      throw new Error(response['failure reason'].toString());
     }
 
     return decodePeers(Buffer.from(response.peers));

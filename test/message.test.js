@@ -1,5 +1,9 @@
 import * as message from '../src/tracker/message.js';
 
+/*
+    Unit test is not for finding bugs, but for designing software components (aka: defining contracts)
+*/
+
 describe("buid request", () => {
     test("encodes request correctly", () => {
         const req = {

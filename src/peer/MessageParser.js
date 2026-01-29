@@ -1,9 +1,17 @@
+// All of the remaining messages in the protocol take the form of <length prefix><message ID><payload>. 
+// The length prefix is a four byte big-endian value. 
+// The message ID is a single decimal byte. 
+// The payload is message dependent.
+
 export class MessageParser {
   constructor() {
     this.buffer = Buffer.alloc(0);
   }
 
   push(data) {
+    /*
+      Sometimes, message does not come in full => need to concat then can get the whole msg
+    */
     this.buffer = Buffer.concat([this.buffer, data]);
     const messages = [];
 
@@ -13,7 +21,10 @@ export class MessageParser {
       // Not enough data yet
       if (this.buffer.length < length + 4) break;
 
-      const msg = this.buffer.slice(0, length + 4);
+      // Get the message from the front
+      const msg = this.buffer.slice(0, length + 4); 
+
+      // Throw what used, keep leftover
       this.buffer = this.buffer.slice(length + 4);
 
       messages.push(parseMessage(msg));
