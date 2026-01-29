@@ -22,12 +22,6 @@ External dependencies used in source:
 
 - bencode — parse/encode ".torrent" and tracker bencoded responses
 
-If this repo lacks a `package.json`, install dependencies manually:
-
-```bash
-npm install bencode
-```
-
 ----
 
 ## Usage
@@ -53,7 +47,12 @@ What to expect:
 
 ----
 
-## Architecture and important files
+## Program flow
+
+
+----
+
+## Architecture 
 
 This section explains the responsibilities of the main source files so you can quickly understand and extend the code.
 
@@ -82,7 +81,7 @@ Other referenced code (implement/verify these exist or update as needed):
 
 ----
 
-## Current limitations (important for contributors)
+## Current limitations
 
 This project is an intentionally small, educational implementation. It is missing many features expected of a robust BitTorrent client:
 
@@ -95,81 +94,17 @@ This project is an intentionally small, educational implementation. It is missin
 
 ----
 
-## Development notes and recommended improvements
-
-If you want to contribute or extend GusTorrentCLI, here are prioritized suggestions with rationale:
-
-1. Message framing and parser robustness
-   - Ensure `src/peer/MessageParser.js` handles partial TCP frames, multiple messages per data event, and maintains internal buffering state between `socket.on('data')` events.
-
-2. Multi-peer concurrency and pipelining
-   - Connect to and manage multiple peers concurrently.
-   - Implement a request pipeline (N outstanding requests per peer) to increase throughput.
-   - Add a request slot manager and simple rate limiting.
-
-3. File reassembly and disk layout
-   - Rebuild the original single-file or multi-file layout from `torrent.info.files` and write blocks at correct offsets to the final files instead of producing piece files.
-
-4. Piece selection strategies
-   - Add rarest-first selection and an end-game mode to avoid long-tail stalls.
-
-5. Tracker and peer improvements
-   - Support UDP trackers, parse non-compact peer lists, and support IPv6 addresses if needed.
-
-6. Resilience and observability
-   - Add connection timeouts, retry/backoff, metrics for download speed and ETA, and more user-friendly progress output.
-
-7. Tests and CI
-   - Add unit tests for torrent parsing, piece verification, and message builders/parsers, and an integration test using a small local test torrent and a controlled peer server.
-
-----
-
-## Example developer workflow
-
-Install dependencies (if package.json exists, run `npm install`):
-
+Run tests : create tests under `test/` .
 ```bash
-npm install
+node test
 ```
 
-Run the client:
-
-```bash
-node index.js <torrent-file>
-```
-
-Run tests (TBD): create tests under `test/` and add a `test` script to `package.json`.
-
 ----
 
-## Contributing
-
-Contributions are welcome. If you plan to change core protocol logic or introduce concurrency, please open an issue describing your plan so we can discuss design choices (request/pipeline windows, piece selection, on-disk layout). When submitting PRs:
-
-- Keep changes small and focused (e.g., one PR for parser fixes, one PR for file reassembly).
-- Add tests for new logic where practical.
-- Update this README with any new runtime flags or behavior.
-
-----
-
-## License
-
-This repository does not include an explicit license file. If you plan to publish or accept contributions, add a LICENSE file (for example, MIT) to clarify terms.
-
-----
-
-## Roadmap / TODO (short)
+## Roadmap / TODO
 - [ ] Implement MessageParser that handles TCP stream framing robustly
 - [ ] Implement file reassembly / write final files instead of piece files
 - [ ] Support multiple concurrent peer connections & pipelining
-- [ ] Add unit tests and CI configuration
 - [ ] Implement UDP tracker support and non-compact peer decoding
 
 ----
-
-If you want, I can:
-- open a set of targeted issues for the TODOs above (ready-to-assign), or
-- create a PR that implements one small improvement (for example, basic file reassembly for single-file torrents or a robust MessageParser), or
-- provide a minimal package.json and npm scripts to make running and testing the project easier.
-
-Tell me which of the above you want next and I will proceed.
