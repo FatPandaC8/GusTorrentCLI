@@ -11,6 +11,12 @@ export class PeerConnection {
     this.bitfield = null;
     this.handshakeReceived = false;
     this.choked = true;
+    this.maxPipelined = 5;
+    this.inflight = new Map();
+    this.stats = {
+      downloaded: 0,
+      startTime: Date.now()
+    };
   }
 
   connect() {
@@ -92,7 +98,7 @@ export class PeerConnection {
     if (id === 1) {
       console.log("Unchoked by peer");
       this.choked = false;
-      this.request(0);
+      this.fillPipeline();
       return;
     }
 
@@ -123,12 +129,19 @@ export class PeerConnection {
 
     // Piece
     if (id === 7) {
+      this.inflight.delete(payload.begin);
       this.pm.addBlock(payload.begin, payload.block);
+      this.stats.downloaded += payload.block.length;
+      this.logSpeed();
+      
+      this.fillPipeline();
 
       if (this.pm.isComplete()) {
         if (!this.pm.verify()) {
           console.error("Piece corrupted!");
-          this.socket.end();
+          this.inflight.clear();
+          this.pm.resetPiece();
+          this.fillPipeline();
           return;
         }
         
@@ -138,24 +151,33 @@ export class PeerConnection {
         // Move to next piece
         if (this.pm.moveToNextPiece()) {
           console.log(`Starting piece ${this.pm.currentPiece}`);
-          this.request(0);
+          this.inflight.clear();
+          this.fillPipeline();
         } else {
           console.log("Download complete!");
           this.socket.end();
         }
-      } else {
-        this.request(payload.begin + payload.block.length);
       }
     }
   }
 
-  request(begin) {
+  fillPipeline() {
     if (this.choked) {
       console.log("Cannot request: still choked");
       return;
     }
-    
-    const req = this.pm.nextRequest(begin);
-    this.socket.write(message.buildRequest(req));
+
+    while (this.inflight.size < this.maxPipelined) {
+      const req = this.pm.nextRequest();
+      if (!req) return;
+      this.socket.write(message.buildRequest(req));
+      this.inflight.set(req.begin, req.length);
+    }
+  }
+
+  logSpeed() {
+    const elapsed = (Date.now() - this.stats.startTime) / 1000;
+    const kbps = (this.stats.downloaded / 1024 / elapsed).toFixed(2);
+    console.log(`Speed: ${kbps} KB/s`);
   }
 }

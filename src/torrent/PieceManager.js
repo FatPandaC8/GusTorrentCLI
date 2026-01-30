@@ -18,6 +18,7 @@ export class PieceManager {
   }
 
   resetPiece() {
+    this.nextOffset = 0;
     this.received = 0;
     this.pieceSize = Math.min(
       this.pieceLength,
@@ -26,12 +27,17 @@ export class PieceManager {
     this.buffer = Buffer.alloc(this.pieceSize);
   }
 
-  nextRequest(begin) {
-    const remaining = this.pieceSize - begin;
+  nextRequest() {
+    if (this.nextOffset >= this.pieceSize) return null;
+    const begin = this.nextOffset;
+    const length = Math.min(BLOCK_SIZE, this.pieceSize - begin);
+  
+    this.nextOffset += length;
+
     return {
       index: this.currentPiece,
       begin,
-      length: Math.min(BLOCK_SIZE, remaining)
+      length
     };
   }
 
