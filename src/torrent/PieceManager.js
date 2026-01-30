@@ -68,7 +68,7 @@ export class PieceManager {
     const filename = `piece${this.currentPiece}.bin`;
     fs.writeFileSync(filename, this.buffer);
     this.downloadedPieces.push(this.currentPiece);
-    console.log(`Saved ${filename} (${this.downloadedPieces.length}/${this.totalPieces})`);
+    // console.log(`Saved ${filename} (${this.downloadedPieces.length}/${this.totalPieces})`);
   }
 
   moveToNextPiece() {
