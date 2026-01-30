@@ -1,6 +1,7 @@
 import net from "net";
 import * as message from "../tracker/message.js";
 import { MessageParser } from "./MessageParser.js";
+import { numPieces } from "../torrent-parser.js";
 
 export class PeerConnection {
   constructor(peer, torrent, pieceManager) {
@@ -11,11 +12,14 @@ export class PeerConnection {
     this.bitfield = null;
     this.handshakeReceived = false;
     this.choked = true;
+    this.currentPiece = null;
+    this.pieceState = null;
+    this.availablePieces = new Set();
   }
 
   connect() {
     this.socket = net.createConnection(
-      { host: this.peer.ip, port: this.peer.port },
+      { host: this.peer.ip, port: this.peer.port, timeout: 10000 },
       () => {
         console.log("Connected to: " + this.peer.ip + ":" + this.peer.port);
         this.socket.write(message.buildHandshake(this.torrent));
@@ -91,9 +95,11 @@ export class PeerConnection {
     // Unchoke
     if (id === 1) {
       console.log("Unchoked by peer");
-      this.choked = false;
+      const piece = this.pm.getPieceForPeer(this.availablePieces);
+      if (piece === null) return;
+      this.currentPiece = piece;
+      this.pieceState = this.pm.startPiece(piece);
       this.request(0);
-      return;
     }
 
     // Interested
@@ -111,51 +117,83 @@ export class PeerConnection {
     // Have
     if (id === 4) {
       console.log("Peer has piece:", payload);
+      const pieceIndex = payload.readUInt32BE(0);
+      this.availablePieces.add(pieceIndex);
       return;
     }
 
     // Bitfield
     if (id === 5) {
       console.log("Received bitfield");
+      // tell which pieces does each peer have
+      this.availablePieces = this.hasWhatPiece(payload, numPieces(this.torrent));
       this.bitfield = payload;
       return;
     }
 
     // Piece
     if (id === 7) {
-      this.pm.addBlock(payload.begin, payload.block);
+      payload.block.copy(this.pieceState.buffer, payload.begin);
+      this.pieceState.received += payload.block.length;
 
-      if (this.pm.isComplete()) {
-        if (!this.pm.verify()) {
-          console.error("Piece corrupted!");
-          this.socket.end();
-          return;
-        }
-        
-        console.log(`Piece ${this.pm.currentPiece} completed and verified`);
-        this.pm.save();
-        
-        // Move to next piece
-        if (this.pm.moveToNextPiece()) {
-          console.log(`Starting piece ${this.pm.currentPiece}`);
-          this.request(0);
+      if (this.pieceState.received >= this.pieceState.size) {
+        const ok = this.pm.completePiece(
+          this.currentPiece,
+          this.pieceState.buffer
+        );
+
+        if (!ok) {
+          console.log(`Piece ${this.currentPiece} failed hash`);
         } else {
-          console.log("Download complete!");
-          this.socket.end();
+          console.log(`Piece ${this.currentPiece} completed`);
+        }
+
+        this.currentPiece = null;
+        this.pieceState = null;
+
+        const next = this.pm.getPieceForPeer(this.availablePieces);
+        if (next !== null) {
+          this.currentPiece = next;
+          this.pieceState = this.pm.startPiece(next);
+          this.request(0);
         }
       } else {
-        this.request(payload.begin + payload.block.length);
+        this.request(this.pieceState.received);
       }
     }
   }
 
   request(begin) {
-    if (this.choked) {
-      console.log("Cannot request: still choked");
-      return;
+    if (this.choked || !this.pieceState) return;
+
+    const remaining = this.pieceState.size - begin;
+    const length = Math.min(16384, remaining);
+
+    this.socket.write(message.buildRequest({
+      index: this.currentPiece,
+      begin,
+      length
+    }));
+  }
+
+  hasWhatPiece(bitfield, numPieces) {
+    const availablePieces = new Set();
+    for (let piece = 0; piece < numPieces; piece++) {
+
+      // each byte holds 8 pieces
+      // pieces 0-7 → byte 0
+      // pieces 8-15 → byte 1
+      const byteIndex = Math.floor(piece / 8);
+
+      // which bit inside that byte (left → right)
+      const bitIndex = 7 - (piece % 8);
+
+      const byte = bitfield[byteIndex];
+      const hasPiece = (byte & (1 << bitIndex)) !== 0;
+      if (hasPiece) {
+        availablePieces.add(piece);
+      }
     }
-    
-    const req = this.pm.nextRequest(begin);
-    this.socket.write(message.buildRequest(req));
+    return availablePieces;
   }
 }

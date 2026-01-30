@@ -1,2 +1,3 @@
-- optimize performance (suggest: adding threads)
-- write tests
+Multi Peers:
+- First is to know which peers have which pieces
+- 

@@ -37,23 +37,22 @@ async function main() {
 
     // Initialize piece manager
     const pm = new PieceManager(torrent);
+    const connections = [];
 
-    // Try connecting to peers (try multiple if first fails)
-    let connected = false;
-    for (let i = 0; i < Math.min(5, peers.length) && !connected; i++) {
+    for (let i = 0; i < Math.min(5, peers.length); i++) {
       const peer = peers[i];
-      console.log(`\nTrying peer ${i + 1}: ${peer.ip}:${peer.port}`);
+      console.log(`Trying peer ${i + 1}: ${peer.ip}:${peer.port}`);
       
       try {
         const conn = new PeerConnection(peer, torrent, pm);
         conn.connect();
-        connected = true;
-        
+        connections.push(conn);
+
         // Keep the process alive
         process.on('SIGINT', () => {
           console.log("\nShutting down...");
-          if (conn.socket) {
-            conn.socket.end();
+          for (const conn of connections) {
+            if (conn.socket) conn.socket.end();
           }
           process.exit(0);
         });
@@ -62,12 +61,6 @@ async function main() {
         console.error(`Failed to connect to peer: ${err.message}`);
       }
     }
-
-    if (!connected) {
-      console.error("Could not connect to any peers");
-      process.exit(1);
-    }
-
   } catch (err) {
     console.error("Error:", err.message);
     console.error(err.stack);
