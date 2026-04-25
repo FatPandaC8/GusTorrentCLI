@@ -27,6 +27,10 @@ cover-html:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
+# BENCH
+bench-parser:
+	go test -bench=. ./internal/parser
+
 # FUZZ 
 fuzz:
 	go test -fuzz=Fuzz -fuzztime=20s ./internal/parser
