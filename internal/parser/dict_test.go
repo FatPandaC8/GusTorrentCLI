@@ -12,9 +12,13 @@ func TestParserDict(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dict := val.(map[string]interface{})
+	if val.t != TypeDict {
+		t.Fail()
+	}
 
-	if string(dict["cow"].([]byte)) != "moo" {
+	dict := val.d
+
+	if string(dict["cow"].s) != "moo" {
 		t.Fatalf("wrong value for cow")
 	}
 }

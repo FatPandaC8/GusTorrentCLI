@@ -12,7 +12,7 @@ func TestParserInt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if val != 42 {
+	if val.t != TypeInt || val.i != 42 {
 		t.Fatalf("expected 42, got %v", val)
 	}
 }

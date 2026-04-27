@@ -12,8 +12,13 @@ func TestParserList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list := val.([]interface{})
-	if len(list) != 3 {
+	if val.t != TypeList {
+		t.Fail()
+	}
+
+	list := val.l
+
+	if len(list) != 3 || list[0].i != 1 {
 		t.Fatalf("expected 3 elements")
 	}
 }

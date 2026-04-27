@@ -1,27 +1,65 @@
 package parser
 
-import (
-	"fmt"
-	"gustorrent/internal/dsa/stack"
-	"strconv"
+import "fmt"
+
+type ValueType byte
+
+const (
+	TypeInt  ValueType = 'i'
+	TypeStr  ValueType = 's'
+	TypeList ValueType = 'l'
+	TypeDict ValueType = 'd'
 )
 
-type ListFrame struct {
-	data []any
+type Value struct {
+	t ValueType
+
+	i int
+	s []byte
+	l []Value
+	d map[string]Value
 }
 
-type DictFrame struct {
-	data        map[string]any
+type Frame struct {
+	typ ValueType
+
+	list []Value
+
+	dict map[string]Value
+	key  string
 	expectValue bool
-	key         string
 }
 
-// parse must move the globally
-func Parse(data []byte) (any, error) {
-	stack := stack.NewStack(32)
-	var current any
-	var hasValue bool
+func parseInt(data []byte, start, end int) (int, error) {
+	if start >= end {
+		return 0, fmt.Errorf("empty int")
+	}
+
+	n := 0
+	sign := 1
+
+	if data[start] == '-' {
+		sign = -1
+		start++
+	}
+
+	for i := start; i < end; i++ {
+		b := data[i]
+		if b < '0' || b > '9' {
+			return 0, fmt.Errorf("invalid number")
+		}
+		n = n*10 + int(b-'0')
+	}
+
+	return sign * n, nil
+}
+
+func Parse(data []byte) (Value, error) {
+	var stack []Frame
 	dataSize := len(data)
+
+	var current Value
+	var hasValue bool
 
 	for i := 0; i < dataSize; i++ {
 		ch := data[i]
@@ -35,16 +73,16 @@ func Parse(data []byte) (any, error) {
 			for end < dataSize && data[end] != 'e' {
 				end++
 			}
-
 			if end >= dataSize {
-				return nil, fmt.Errorf("unterminated integer")
+				return Value{}, fmt.Errorf("unterminated int")
 			}
 
-			n, err := strconv.Atoi(string(data[start:end]))
+			n, err := parseInt(data, start, end)
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
-			current = n
+
+			current = Value{t: TypeInt, i: n}
 			i = end
 			hasValue = true
 
@@ -52,88 +90,88 @@ func Parse(data []byte) (any, error) {
 			start := i
 			end := start
 
-			for end < len(data) && data[end] != ':' {
+			for end < dataSize && data[end] != ':' {
 				end++
 			}
-
-			if end >= len(data) {
-				return nil, fmt.Errorf("unterminated string length")
+			if end >= dataSize {
+				return Value{}, fmt.Errorf("bad string len")
 			}
 
-			length, err := strconv.Atoi(string(data[start:end]))
+			length, err := parseInt(data, start, end)
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
 
 			dataStart := end + 1
 			dataEnd := dataStart + length
 
-			if dataEnd > len(data) {
-				return nil, fmt.Errorf("string out of bounds")
+			if dataEnd > dataSize {
+				return Value{}, fmt.Errorf("string OOB")
 			}
 
-			current = data[dataStart:dataEnd]
-			i = dataEnd - 1 // adjust for loop increment
+			current = Value{
+				t: TypeStr,
+				s: data[dataStart:dataEnd], // zero-copy
+			}
+
+			i = dataEnd - 1
 			hasValue = true
 
 		case ch == 'l':
-			stack.Push(&ListFrame{data: []any{}}) // push the type into the stack
-			hasValue = false
+			stack = append(stack, Frame{
+				typ:  TypeList,
+				list: make([]Value, 0, 8),
+			})
 
 		case ch == 'd':
-			stack.Push(&DictFrame{
-				data: make(map[string]any),
+			stack = append(stack, Frame{
+				typ:  TypeDict,
+				dict: make(map[string]Value, 8),
 			})
-			hasValue = false
 
 		case ch == 'e':
-			val, err := stack.Pop()
-			if err != nil {
-				return nil, err
+			if len(stack) == 0 {
+				return Value{}, fmt.Errorf("unexpected end")
 			}
-			switch v := val.(type) {
-			case *ListFrame:
-				current = v.data
-			case *DictFrame:
-				current = v.data
+
+			top := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+
+			if top.typ == TypeList {
+				current = Value{t: TypeList, l: top.list}
+			} else {
+				current = Value{t: TypeDict, d: top.dict}
 			}
+
 			hasValue = true
 
 		default:
-			return nil, fmt.Errorf("invalid character: %c", ch)
+			return Value{}, fmt.Errorf("invalid char: %c", ch)
 		}
 
 		if hasValue {
-			if !stack.IsEmpty() {
-				top, _ := stack.Peek()
-	
-				switch frame := top.(type) {
-	
-				case *ListFrame:
-					frame.data = append(frame.data, current)
-	
-				case *DictFrame:
-					if !frame.expectValue {
-						keyBytes, ok := current.([]byte)
-						if !ok {
-							return nil, fmt.Errorf("dict key must be string")
-						}
-						frame.key = string(keyBytes)
-						frame.expectValue = true
-					} else {
-						frame.data[frame.key] = current
-						frame.expectValue = false
-					}
-				}
-			} else {
+			if len(stack) == 0 {
 				return current, nil
+			}
+
+			top := &stack[len(stack)-1]
+
+			if top.typ == TypeList {
+				top.list = append(top.list, current)
+			} else {
+				if !top.expectValue {
+					if current.t != TypeStr {
+						return Value{}, fmt.Errorf("dict key must be string")
+					}
+					top.key = string(current.s) // unavoidable alloc
+					top.expectValue = true
+				} else {
+					top.dict[top.key] = current
+					top.expectValue = false
+				}
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("unexpected end of input")
+	return Value{}, fmt.Errorf("unexpected EOF")
 }
-
-// USAGE:
-// Parse(byte, position)
-// byte is the file byte, position is global position for recursion

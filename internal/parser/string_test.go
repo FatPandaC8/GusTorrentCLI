@@ -12,8 +12,8 @@ func TestParserString(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(val.([]byte)) != "hello" {
-		t.Fatalf("expected hello, got %s", val)
+	if val.t != TypeStr || string(val.s) != "hello" {
+		t.Fatalf("expected hello, got %v", val)
 	}
 }
 
