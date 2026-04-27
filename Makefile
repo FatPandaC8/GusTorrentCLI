@@ -10,26 +10,21 @@ run:
 	go run $(MAIN)
 
 # TEST 
+.PHONY: test
 test:
 	go test ./...
-
-test-parser:
-	go test ./internal/parser
 
 # COVERAGE 
 cover:
 	go test -cover ./...
-
-cover-parser:
-	go test -cover ./internal/parser
 
 cover-html:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
 # BENCH
-bench-parser:
-	go test -bench=. ./internal/parser
+bench:
+	go test -bench=. ./...
 
 # FUZZ 
 fuzz:

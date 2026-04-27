@@ -1,14 +1,13 @@
 package parser
 
-import ( 
+import (
 	"testing"
 )
 
 func TestParserList(t *testing.T) {
 	data := []byte("li1ei2ei3ee")
-	pos := 0
 
-	val, err := Parse(data, &pos)
+	val, err := Parse(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,9 +20,8 @@ func TestParserList(t *testing.T) {
 
 func TestBadList(t *testing.T) {
 	data := []byte("li1ei2e") // more final 'e'
-	pos := 0
 
-	_, err := Parse(data, &pos)
+	_, err := Parse(data)
 	if err == nil {
 		t.Fatal("expected error")
 	}

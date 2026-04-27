@@ -10,14 +10,8 @@ func FuzzParse(f *testing.F) {
 	f.Add([]byte("d3:cow3:moo4:spam4:eggse")) // dict
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		pos := 0
 
-		_, err := Parse(data, &pos)
-
-		// Example invariant: parser should never go out of bounds
-		if pos > len(data) {
-			t.Fatalf("pos out of bounds: %d > %d", pos, len(data))
-		}
+		_, err := Parse(data)
 
 		// Optional: reject weird behavior
 		if err == nil && len(data) == 0 {

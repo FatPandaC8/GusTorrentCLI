@@ -6,20 +6,9 @@ import (
 
 func TestUnknownType(t *testing.T) {
 	data := []byte("x")
-	pos := 0
 
-	_, err := Parse(data, &pos)
+	_, err := Parse(data)
 	if err == nil {
 		t.Fatal("expected unknown type error")
-	}
-}
-
-func TestOutOfBound(t *testing.T) {
-	data := []byte("i42e")
-	pos := 100
-
-	_, err := Parse(data, &pos)
-	if err == nil {
-		t.Fatal("expected out of bound error")
 	}
 }

@@ -6,9 +6,8 @@ import (
 
 func TestParserString(t *testing.T) {
 	data := []byte("5:hello")
-	pos := 0
 
-	val, err := Parse(data, &pos)
+	val, err := Parse(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,9 +19,8 @@ func TestParserString(t *testing.T) {
 
 func TestBadStringLength(t *testing.T) {
 	data := []byte("999:abc")
-	pos := 0
 
-	_, err := Parse(data, &pos)
+	_, err := Parse(data)
 	if err == nil {
 		t.Fatal("expected error")
 	}
