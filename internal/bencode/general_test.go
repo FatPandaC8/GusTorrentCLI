@@ -6,9 +6,8 @@ import (
 
 func TestUnknownType(t *testing.T) {
 	data := []byte("x")
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected unknown type error")
 	}

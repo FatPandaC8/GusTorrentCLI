@@ -12,8 +12,12 @@ type Value struct {
 	Str  []byte
 	List []Value
 	Dict map[string]Value
+
+	Start int
+	End int
 }
 
+// [internal] Returns Value, recursive position, error
 func Decode(data []byte, pos int) (Value, int, error) {
 	if pos >= len(data) {
 		return Value{}, 0, fmt.Errorf("unexpected eof")
@@ -30,7 +34,7 @@ func Decode(data []byte, pos int) (Value, int, error) {
 		if err != nil {
 			return Value{}, 0, err
 		}
-		return Value{Type: 'i', Int: n}, end + 1 - pos, nil
+		return Value{Type: 'i', Int: n, Start: pos, End: end + 1}, end + 1 - pos, nil
 
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		colon := bytes.IndexByte(data[pos:], ':')
@@ -47,7 +51,7 @@ func Decode(data []byte, pos int) (Value, int, error) {
 		if end > len(data) {
 			return Value{}, 0, fmt.Errorf("string out of bounds")
 		}
-		return Value{Type: 's', Str: data[start:end]}, end - pos, nil
+		return Value{Type: 's', Str: data[start:end], Start: pos, End: end}, end - pos, nil
 
 	case 'l':
 		var items []Value
@@ -63,7 +67,7 @@ func Decode(data []byte, pos int) (Value, int, error) {
 		if cur >= len(data) {
 			return Value{}, 0, fmt.Errorf("unterminated list")
 		}
-		return Value{Type: 'l', List: items}, cur + 1 - pos, nil // +1 for 'e'
+		return Value{Type: 'l', List: items, Start: pos, End: cur + 1}, cur + 1 - pos, nil // +1 for 'e'
 
 	case 'd':
 		dict := map[string]Value{}
@@ -87,7 +91,7 @@ func Decode(data []byte, pos int) (Value, int, error) {
 		if cur >= len(data) {
 			return Value{}, 0, fmt.Errorf("unterminated dict")
 		}
-		return Value{Type: 'd', Dict: dict}, cur + 1 - pos, nil // +1 for 'e'
+		return Value{Type: 'd', Dict: dict, Start: pos, End: cur + 1}, cur + 1 - pos, nil // +1 for 'e'
 	}
 
 	return Value{}, 0, fmt.Errorf("unexpected byte: %c", data[pos])

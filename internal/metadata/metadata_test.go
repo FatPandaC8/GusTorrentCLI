@@ -6,7 +6,8 @@ import (
 
 func TestGetMetadata_SingleFile_Minimal(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+		"4:infod" +
 		"12:piece lengthi4e" +
 		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
 		"4:name8:file.txt" +
@@ -14,7 +15,7 @@ func TestGetMetadata_SingleFile_Minimal(t *testing.T) {
 		"ee",
 	)
 
-	info, err := GetMetadata(data)
+	info, _, err := GetMetadata(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -30,10 +31,11 @@ func TestGetMetadata_SingleFile_Minimal(t *testing.T) {
 
 func TestGetMetadata_MissingInfo(t *testing.T) {
 	data := []byte(
-		"d4:name8:file.txte",
+		"d8:announce11:http://test" + 
+		"4:name8:file.txte",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatal("expected error for missing info")
 	}
@@ -41,14 +43,15 @@ func TestGetMetadata_MissingInfo(t *testing.T) {
 
 func TestGetMetadata_MissingName(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
+		"d8:announce11:http://test" + 
+		"4:infod" +
 			"12:piece lengthi4e" +
 			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
 			"6:lengthi200e" +
 			"ee",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatal("expected error for missing name")
 	}
@@ -56,14 +59,15 @@ func TestGetMetadata_MissingName(t *testing.T) {
 
 func TestGetMetadata_MissingPieceLength(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
+		"d8:announce11:http://test" +
+			"4:infod" +
 			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
 			"4:name8:file.txt" +
 			"6:lengthi200e" +
 			"ee",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatal("expected error for missing piece length")
 	}
@@ -71,30 +75,67 @@ func TestGetMetadata_MissingPieceLength(t *testing.T) {
 
 func TestGetMetadata_MissingPieces(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
-			"12:piece lengthi4e" +
+		"d" +
+			"8:announce11:http://test" +
+			"4:infod" +
+				"12:piece lengthi4e" +
+				"4:name8:file.txt" +
+				"6:lengthi200e" +
+			"ee",
+	)
+
+	_, _, err := GetMetadata(data)
+	if err == nil || err.Error() != "missing pieces" {
+		t.Fatalf("expected missing pieces error, got %v", err)
+	}
+}
+
+func TestGetMetadata_PieceLengthNotMod20(t *testing.T) {
+	data := []byte(
+		"d8:announce11:http://test" +
+			"4:infod" +
+			"12:piece lengthi4e" + 
+			"6:pieces21:aaaaaaaaaaaaaaaaaaaaa" +
 			"4:name8:file.txt" +
 			"6:lengthi200e" +
 			"ee",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatal("expected error for missing pieces")
 	}
 }
 
-func TestParseFiles_CoversLengthAndPathOK(t *testing.T) {
+func TestGetMetadata_NotFileNorLength(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
-			"12:piece lengthi512e" +
+		"d8:announce11:http://test" +
+			"4:infod" +
+			"12:piece lengthi4e" + 
 			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-			"4:name8:testname" +
-			"5:filesl" +
-			"d6:lengthi123e4:pathl8:file.txteee" +
+			"4:name8:file.txt" +
 			"ee",
 	)
-	info, err := GetMetadata(data)
+
+	_, _, err := GetMetadata(data)
+	if err == nil {
+		t.Fatal("expected error for not file or length")
+	}
+}
+
+func TestParseFiles_CoversLengthAndPathOK(t *testing.T) {
+	data := []byte(
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" + 
+		"4:infod" +
+		"12:piece lengthi512e" +
+		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+		"4:name8:testname" +
+		"5:filesl" +
+		"d6:lengthi123e4:pathl8:file.txteee" +
+		"ee",
+	)
+
+	info, _, err := GetMetadata(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +153,7 @@ func TestParseFiles_CoversLengthAndPathOK(t *testing.T) {
 func TestGetMetadata_InvalidRootType(t *testing.T) {
 	data := []byte("i123e")
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatal("expected error for invalid root type")
 	}
@@ -120,14 +161,16 @@ func TestGetMetadata_InvalidRootType(t *testing.T) {
 
 func TestGetMetadata_InvalidLength(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
-			"12:piece lengthi4e" +
-			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-			"4:name8:file.txt" +
-			"6:lengthee", // malformed length
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+		"4:infod" +
+		"12:piece lengthi4e" +
+		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+		"4:name8:file.txt" +
+		"6:lengthee" +
+		"ee",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatal("expected error for invalid length")
 	}
@@ -135,17 +178,18 @@ func TestGetMetadata_InvalidLength(t *testing.T) {
 
 func TestGetMetadata_SingleFile_WithOptional(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
-			"12:piece lengthi4e" +
-			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-			"4:name8:file.txt" +
-			"6:lengthi200e" +
-			"7:privatei1e" +
-			"6:md5sum3:abc" +
-			"ee",
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+		"4:infod" +
+		"12:piece lengthi4e" +
+		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+		"4:name8:file.txt" +
+		"6:lengthi200e" +
+		"7:privatei1e" +
+		"6:md5sum3:abc" +
+		"ee",
 	)
 
-	info, err := GetMetadata(data)
+	info, _, err := GetMetadata(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -160,17 +204,18 @@ func TestGetMetadata_SingleFile_WithOptional(t *testing.T) {
 
 func TestGetMetadata_MultiFile(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
-			"12:piece lengthi4e" +
-			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-			"4:name6:folder" +
-			"5:filesl" +
-				"d6:lengthi50e4:pathl5:a.txtee" +
-			"ee" +
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+		"4:infod" +
+		"12:piece lengthi4e" +
+		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+		"4:name6:folder" +
+		"5:filesl" +
+			"d6:lengthi50e4:pathl5:a.txtee" +
+		"ee" +
 		"ee",
 	)
 
-	info, err := GetMetadata(data)
+	info, _, err := GetMetadata(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -185,18 +230,19 @@ func TestGetMetadata_MultiFile(t *testing.T) {
 
 func TestGetMetadata_MultiFile_WithMD5(t *testing.T) {
 	data := []byte(
-		"d4:infod" +
-			"12:piece lengthi4e" +
-			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-			"4:name6:folder" +
-			"5:filesl" +
-				"d6:lengthi50e4:pathl5:a.txt" +
-				"e6:md5sum3:xyze" +
-			"e" +
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+		"4:infod" +
+		"12:piece lengthi4e" +
+		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+		"4:name6:folder" +
+		"5:filesl" +
+			"d6:lengthi50e4:pathl5:a.txt" +
+			"e6:md5sum3:xyze" +
+		"e" +
 		"ee",
 	)
 
-	info, err := GetMetadata(data)
+	info, _, err := GetMetadata(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -216,7 +262,7 @@ func TestGetMetadata_InvalidPieces(t *testing.T) {
 		"ee",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -231,14 +277,14 @@ func TestGetMetadata_Invalid_NoMode(t *testing.T) {
 		"ee",
 	)
 
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestGetMetadata_InvalidRoot(t *testing.T) {
-	_, err := GetMetadata([]byte("i123e"))
+	_, _, err := GetMetadata([]byte("i123e"))
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -246,7 +292,7 @@ func TestGetMetadata_InvalidRoot(t *testing.T) {
 
 func TestGetMetadata_NoInfo(t *testing.T) {
 	data := []byte("d3:foo3:bare")
-	_, err := GetMetadata(data)
+	_, _, err := GetMetadata(data)
 	if err == nil {
 		t.Fatalf("expected error")
 	}

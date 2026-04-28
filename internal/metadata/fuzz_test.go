@@ -23,6 +23,6 @@ func FuzzGetMetadata(f *testing.F) {
 			}
 		}()
 
-		_, _ = GetMetadata(data)
+		_, _, _ = GetMetadata(data)
 	})
 }

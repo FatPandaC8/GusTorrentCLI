@@ -7,9 +7,8 @@ import (
 
 func TestParserString(t *testing.T) {
 	data := []byte("5:hello")
-	pos := 0
 
-	val, _, err := Decode(data, pos)
+	val, _, err := Decode(data, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,9 +20,8 @@ func TestParserString(t *testing.T) {
 
 func TestBadStringLength(t *testing.T) {
 	data := []byte("999:abc")
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -31,9 +29,8 @@ func TestBadStringLength(t *testing.T) {
 
 func TestBadStringColon(t *testing.T) {
 	data := []byte("3abc")
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected colon")
 	}
@@ -42,9 +39,8 @@ func TestBadStringColon(t *testing.T) {
 func TestForeignLanguageString(t *testing.T) {
 	str := "あいうえおか"
 	data := fmt.Appendf(nil, "%d:%s", len([]byte(str)), str)
-	pos := 0
 
-	val, _, err := Decode(data, pos)
+	val, _, err := Decode(data, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

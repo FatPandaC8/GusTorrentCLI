@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"gustorrent/internal/bencode"
 )
@@ -9,6 +10,7 @@ type Info struct {
 	PieceLength int
 	Pieces      []byte
 	Name        string
+	Announce 	string // url to the tracker
 
 	// optional
 	Private *int // being a pointer meaning it could be nil
@@ -27,21 +29,33 @@ type FileInfo struct {
 	Path   []string
 }
 
-func GetMetadata(data []byte) (Info, error) {
-	pos := 0 // only for recursive for decode
-	rootVal, _, err := bencode.Decode(data, pos)
+func GetMetadata(data []byte) (Info, [20]byte, error) {
+	rootVal, _, err := bencode.Decode(data, 0)
 	if err != nil {
-		return Info{}, err
+		return Info{}, [20]byte{}, err
 	}
 
 	root := rootVal.Dict
+	announceVal, ok := root["announce"]
+	if !ok {
+		return Info{}, [20]byte{}, fmt.Errorf("missing announce")
+	}
 
 	infoVal, ok := root["info"]
 	if !ok {
-		return Info{}, fmt.Errorf("missing info dict")
+		return Info{}, [20]byte{}, fmt.Errorf("missing info dict")
 	}
 
-	return parseInfo(infoVal)
+	info, err := parseInfo(infoVal)
+	if err != nil {
+		return Info{}, [20]byte{}, err
+	}
+
+	infoHash := infoHash(data, infoVal)
+
+	info.Announce = string(announceVal.Str)
+	
+	return info, infoHash, nil
 }
 
 func parseInfo(v bencode.Value) (Info, error) {
@@ -130,4 +144,26 @@ func toStringSlice(list []bencode.Value) []string {
 		res[i] = string(v.Str)
 	}
 	return res
+}
+
+func infoHash(data []byte, infoVal bencode.Value) [20]byte {
+	raw := data[infoVal.Start:infoVal.End]
+	return sha1.Sum(raw)
+}
+
+// [test] Used specially for benchmarking, don't use for production or anything else
+func getMetadataNoHash(data []byte) (Info, error) {
+    rootVal, _, err := bencode.Decode(data, 0)
+    if err != nil {
+        return Info{}, err
+    }
+
+    infoVal := rootVal.Dict["info"]
+
+    info, err := parseInfo(infoVal)
+    if err != nil {
+        return Info{}, err
+    }
+
+    return info, nil
 }

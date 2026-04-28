@@ -6,9 +6,8 @@ import (
 
 func TestParserDict(t *testing.T) {
 	data := []byte("d3:cow3:moo4:spam4:eggse")
-	pos := 0
 
-	val, _, err := Decode(data, pos)
+	val, _, err := Decode(data, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,9 +21,8 @@ func TestParserDict(t *testing.T) {
 
 func TestBadDict(t *testing.T) {
 	data := []byte("d3:cow3:moo") // missing 'e' in the content
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected dict error")
 	}
@@ -41,9 +39,8 @@ func TestDecode_DictValueDecodeError(t *testing.T) {
 
 func TestDictKeyNotString(t *testing.T) {
 	data := []byte("di42e3:fooee") // key = int
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected key not string")
 	}

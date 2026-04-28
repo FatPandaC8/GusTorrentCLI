@@ -26,8 +26,17 @@ cover-html:
 	explorer.exe coverage.html 
 
 # BENCH
-bench:
-	go test -bench=. -benchmem ./...
+bench-metadata:
+	go test -bench=. -benchmem -cpuprofile=metadata_cpu.out ./internal/metadata
+	go tool pprof -http=:8080 metadata_cpu.out
+
+bench-bencode:
+	go test -bench=. -benchmem -cpuprofile=bencode_cpu.out ./internal/bencode
+	go tool pprof -http=:8080 bencode_cpu.out
+
+bench-tracker:
+	go test -bench=. -benchmem -cpuprofile=tracker_cpu.out ./internal/tracker
+	go tool pprof -http=:8080 tracker_cpu.out
 
 # FUZZ 
 fuzz-bencode:

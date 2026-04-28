@@ -7,9 +7,8 @@ import (
 
 func BenchmarkParse(b *testing.B) {
 	data, _ := os.ReadFile("../../torrent_files/ubuntu25.torrent")
-	pos := 0
 
 	for b.Loop() {
-		Decode(data, pos)
+		Decode(data, 0)
 	}
 }

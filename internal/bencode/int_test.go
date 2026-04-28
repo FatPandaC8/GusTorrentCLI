@@ -6,9 +6,8 @@ import (
 
 func TestParserInt(t *testing.T) {
 	data := []byte("i42e")
-	pos := 0
 
-	val, _, err := Decode(data, pos)
+	val, _, err := Decode(data, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,9 +19,8 @@ func TestParserInt(t *testing.T) {
 
 func TestBadInt(t *testing.T) {
 	data := []byte("i42") // missing 'e'
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -30,9 +28,8 @@ func TestBadInt(t *testing.T) {
 
 func TestOverflowInt(t *testing.T) {
 	data := []byte("i999999999999999999999999999999e")
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected error")
 	}

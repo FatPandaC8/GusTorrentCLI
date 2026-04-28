@@ -6,9 +6,8 @@ import (
 
 func TestParserList(t *testing.T) {
 	data := []byte("li1ei2ei3ee")
-	pos := 0
 
-	val, _, err := Decode(data, pos)
+	val, _, err := Decode(data, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,9 +21,8 @@ func TestParserList(t *testing.T) {
 
 func TestBadList(t *testing.T) {
 	data := []byte("li1ei2e") // more final 'e'
-	pos := 0
 
-	_, _, err := Decode(data, pos)
+	_, _, err := Decode(data, 0)
 	if err == nil {
 		t.Fatal("expected list error")
 	}
