@@ -1,14 +1,14 @@
-package parser
+package metadata
 
 import (
 	"os"
 	"testing"
 )
 
-func BenchmarkParse(b *testing.B) {
+func BenchmarkMetadata(b *testing.B) {
 	data, _ := os.ReadFile("../../torrent_files/ubuntu25.torrent")
-
+	
 	for b.Loop() {
-		Parse(data)
+		GetMetadata(data)
 	}
 }

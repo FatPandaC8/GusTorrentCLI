@@ -1,0 +1,400 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>bencode: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">gustorrent/internal/bencode/bencode.go (98.1%)</option>
+				
+				<option value="file1">gustorrent/internal/metadata/metadata.go (100.0%)</option>
+				
+				<option value="file2">gustorrent/internal/utils/convert.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package bencode
+
+import (
+        "bytes"
+        "fmt"
+        "gustorrent/internal/utils"
+)
+
+type Value struct {
+        Type rune // 'i', 's', 'l', 'd'
+        Int  int
+        Str  []byte
+        List []Value
+        Dict map[string]Value
+}
+
+func Decode(data []byte, pos int) (Value, int, error) <span class="cov8" title="1">{
+        if pos &gt;= len(data) </span><span class="cov8" title="1">{
+                return Value{}, 0, fmt.Errorf("unexpected eof")
+        }</span>
+
+        <span class="cov8" title="1">switch data[pos] </span>{
+        case 'i':<span class="cov8" title="1">
+                end := bytes.IndexByte(data[pos:], 'e')
+                if end == -1 </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("unterminated int")
+                }</span>
+                <span class="cov8" title="1">end += pos
+                n, err := utils.Atoi(data[pos+1 : end])
+                if err != nil </span><span class="cov8" title="1">{
+                        return Value{}, 0, err
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 'i', Int: n}, end + 1 - pos, nil</span>
+
+        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':<span class="cov8" title="1">
+                colon := bytes.IndexByte(data[pos:], ':')
+                if colon == -1 </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("missing colon")
+                }</span>
+                <span class="cov8" title="1">colon += pos
+                length, err := utils.Atoi(data[pos:colon])
+                if err != nil </span><span class="cov8" title="1">{
+                        return Value{}, 0, err
+                }</span>
+                <span class="cov8" title="1">start := colon + 1
+                end := start + length
+                if end &gt; len(data) </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("string out of bounds")
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 's', Str: data[start:end]}, end - pos, nil</span>
+
+        case 'l':<span class="cov8" title="1">
+                var items []Value
+                cur := pos + 1 // skip 'l'
+                for cur &lt; len(data) &amp;&amp; data[cur] != 'e' </span><span class="cov8" title="1">{
+                        v, n, err := Decode(data, cur)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return Value{}, 0, err
+                        }</span>
+                        <span class="cov8" title="1">items = append(items, v)
+                        cur += n</span>
+                }
+                <span class="cov8" title="1">if cur &gt;= len(data) </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("unterminated list")
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 'l', List: items}, cur + 1 - pos, nil</span> // +1 for 'e'
+
+        case 'd':<span class="cov8" title="1">
+                dict := map[string]Value{}
+                cur := pos + 1 // skip 'd'
+                for cur &lt; len(data) &amp;&amp; data[cur] != 'e' </span><span class="cov8" title="1">{
+                        key, n, err := Decode(data, cur)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return Value{}, 0, err
+                        }</span>
+                        <span class="cov8" title="1">if key.Type != 's' </span><span class="cov8" title="1">{
+                                return Value{}, 0, fmt.Errorf("dict key must be a string")
+                        }</span>
+                        <span class="cov8" title="1">cur += n
+                        val, n, err := Decode(data, cur)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return Value{}, 0, err
+                        }</span>
+                        <span class="cov8" title="1">dict[string(key.Str)] = val
+                        cur += n</span>
+                }
+                <span class="cov8" title="1">if cur &gt;= len(data) </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("unterminated dict")
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 'd', Dict: dict}, cur + 1 - pos, nil</span> // +1 for 'e'
+        }
+
+        <span class="cov8" title="1">return Value{}, 0, fmt.Errorf("unexpected byte: %c", data[pos])</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package metadata
+
+import (
+        "fmt"
+        "gustorrent/internal/bencode"
+)
+
+type Info struct {
+        PieceLength int
+        Pieces      []byte
+        Name        string
+
+        // optional
+        Private *int // being a pointer meaning it could be nil
+
+        // single-file
+        Length *int
+        Md5sum *string
+
+        // multi-file
+        Files []FileInfo
+}
+
+type FileInfo struct {
+        Length int
+        Md5sum *string
+        Path   []string
+}
+
+func GetMetadata(data []byte) (Info, error) <span class="cov8" title="1">{
+        pos := 0 // only for recursive for decode
+        rootVal, _, err := bencode.Decode(data, pos)
+        if err != nil </span><span class="cov8" title="1">{
+                return Info{}, err
+        }</span>
+
+        <span class="cov8" title="1">root := rootVal.Dict
+
+        infoVal, ok := root["info"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing info dict")
+        }</span>
+
+        <span class="cov8" title="1">return parseInfo(infoVal)</span>
+}
+
+func parseInfo(v bencode.Value) (Info, error) <span class="cov8" title="1">{
+        m := v.Dict
+
+        info := Info{}
+
+        // required
+        PieceLengthVal, ok := m["piece length"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing length")
+        }</span>
+        <span class="cov8" title="1">PiecesVal, ok := m["pieces"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing pieces")
+        }</span>
+        <span class="cov8" title="1">NameVal, ok := m["name"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing name")
+        }</span>
+        <span class="cov8" title="1">info.PieceLength = PieceLengthVal.Int
+        info.Pieces = PiecesVal.Str
+        info.Name = string(NameVal.Str)
+
+        // validate pieces
+        if len(info.Pieces)%20 != 0 </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("invalid pieces length")
+        }</span>
+
+        // optional: private
+        <span class="cov8" title="1">if val, ok := m["private"]; ok </span><span class="cov8" title="1">{
+                x := val.Int
+                info.Private = &amp;x
+        }</span>
+
+        // mode detection
+        <span class="cov8" title="1">if filesVal, ok := m["files"]; ok </span><span class="cov8" title="1">{
+                files := parseFiles(filesVal)
+                info.Files = files
+
+        }</span> else<span class="cov8" title="1"> if lengthVal, ok := m["length"]; ok </span><span class="cov8" title="1">{
+                x := lengthVal.Int
+                info.Length = &amp;x
+
+                if md5, ok := m["md5sum"]; ok </span><span class="cov8" title="1">{
+                        s := string(md5.Str)
+                        info.Md5sum = &amp;s
+                }</span>
+
+        } else<span class="cov8" title="1"> {
+                return Info{}, fmt.Errorf("invalid: neither files nor length")
+        }</span>
+
+        <span class="cov8" title="1">return info, nil</span>
+}
+
+func parseFiles(v bencode.Value) []FileInfo <span class="cov8" title="1">{
+        var result []FileInfo
+
+        for _, item := range v.List </span><span class="cov8" title="1">{
+                m := item.Dict
+
+                lengthVal := m["length"]
+
+                pathVal := m["path"]
+
+                f := FileInfo{
+                        Length: lengthVal.Int,
+                        Path:   toStringSlice(pathVal.List),
+                }
+
+                if md5, ok := m["md5sum"]; ok </span><span class="cov8" title="1">{
+                        s := string(md5.Str)
+                        f.Md5sum = &amp;s
+                }</span>
+
+                <span class="cov8" title="1">result = append(result, f)</span>
+        }
+
+        <span class="cov8" title="1">return result</span>
+}
+
+func toStringSlice(list []bencode.Value) []string <span class="cov8" title="1">{
+        res := make([]string, len(list))
+        for i, v := range list </span><span class="cov8" title="1">{
+                res[i] = string(v.Str)
+        }</span>
+        <span class="cov8" title="1">return res</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package utils
+
+import "errors"
+
+// [HELPER] Default is base 10
+// NOTE: need to implement int overflow from input
+// uint8  : 0 to 255 
+// uint16 : 0 to 65535 
+// uint32 : 0 to 4294967295 
+// uint64 : 0 to 18446744073709551615 
+// int8   : -128 to 127 
+// int16  : -32768 to 32767 
+// int32  : -2147483648 to 2147483647 
+// int64  : -9223372036854775808 to 9223372036854775807
+
+const (
+        MaxUint = ^uint(0)
+        MinUint = 0
+        MaxInt = int(MaxUint &gt;&gt; 1)
+        MinInt = -MaxInt - 1
+)
+
+func Atoi(s []byte) (int, error) <span class="cov8" title="1">{
+        if len(s) == 0 </span><span class="cov8" title="1">{
+                return 0, errors.New("empty string")
+        }</span>
+
+        <span class="cov8" title="1">i := 0
+        sign := 1
+
+        // handle sign
+        if s[0] == '-' </span><span class="cov8" title="1">{
+                sign = -1
+                i++
+                if i == len(s) </span><span class="cov8" title="1">{
+                        return 0, errors.New("invalid number")
+                }</span>
+        }
+
+        // leading zero check (bencode strict)
+        <span class="cov8" title="1">if s[i] == '0' &amp;&amp; i + 1 &lt; len(s) </span><span class="cov8" title="1">{
+                return 0, errors.New("leading zero")
+        }</span>
+
+        <span class="cov8" title="1">n := 0
+
+        for ; i &lt; len(s); i++ </span><span class="cov8" title="1">{
+                ch := s[i]
+                if ch &lt; '0' || ch &gt; '9' </span><span class="cov8" title="1">{
+                        return 0, errors.New("invalid digit")
+                }</span>
+
+                <span class="cov8" title="1">digit := int(ch - '0')
+
+                // ensure the next result can be held: n * 10 + digit &lt;= MaxInt
+                if n &gt; (MaxInt - digit) / 10 </span><span class="cov8" title="1">{
+                        return 0, errors.New("overflow")
+                }</span>
+
+                <span class="cov8" title="1">n = (n &lt;&lt; 3) + (n &lt;&lt; 1) + digit</span>
+        }
+
+        <span class="cov8" title="1">return sign * n, nil</span>
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

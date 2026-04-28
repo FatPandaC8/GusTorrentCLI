@@ -18,21 +18,27 @@ test:
 cover:
 	go test -cover ./...
 
+# the explorer.exe is because of the wsl
+# NOTE: remember to change this if change dev env
 cover-html:
 	go test -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	explorer.exe coverage.html 
 
 # BENCH
 bench:
-	go test -bench=. ./...
+	go test -bench=. -benchmem ./...
 
 # FUZZ 
-fuzz:
-	go test -fuzz=Fuzz -fuzztime=20s ./internal/parser
+fuzz-bencode:
+	go test -fuzz=Fuzz -fuzztime=20s ./internal/bencode
+
+fuzz-metadata:
+	go test -fuzz=Fuzz -fuzztime=20s ./internal/metadata
 
 # CLEAN 
 clean:
-	rm -rf bin coverage.out
+	rm -rf bin coverage.html
 
 # FORMAT & LINT 
 fmt:
