@@ -38,6 +38,10 @@ bench-tracker:
 	go test -bench=. -benchmem -cpuprofile=tracker_cpu.out ./internal/tracker
 	go tool pprof -http=:8080 tracker_cpu.out
 
+bench-utils:
+	go test -bench=. -benchmem -cpuprofile=utils_cpu.out ./internal/utils
+	go tool pprof -http=:8080 utils_cpu.out
+
 # FUZZ 
 fuzz-bencode:
 	go test -fuzz=Fuzz -fuzztime=20s ./internal/bencode
