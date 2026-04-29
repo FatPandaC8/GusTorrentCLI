@@ -24,6 +24,7 @@ type Peer struct {
 func BuildTrackerURL(announce string, infoHash [20]byte, totalLength int) string {
 	params := url.Values{}
 
+	// TODO: make the peer id from config
 	params.Set("info_hash", string(infoHash[:])) // raw bytes
 	params.Set("peer_id", "-GT0001-123456789012") // 20 bytes exactly, can be anyname
 	params.Set("port", "6881")
