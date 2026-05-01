@@ -9,6 +9,12 @@ build:
 run:
 	go run $(MAIN)
 
+docker-build:
+	sudo docker build -t gustorrent-client .
+
+docker-run:
+	sudo docker run gustorrent-client
+
 # TEST 
 .PHONY: test
 test:
