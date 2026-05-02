@@ -5,9 +5,8 @@ import (
 	"gustorrent/internal/metadata"
 	pr "gustorrent/internal/peer"
 	"gustorrent/internal/tracker"
-	"io"
-	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -30,7 +29,7 @@ func main() {
 	totalPieces := len(info.Pieces) / 20
 	pm := pr.NewPieceManager(totalPieces)
 
-	// precompute total size + last piece
+	// compute total size (for last piece)
 	totalSize := 0
 	if info.Length != nil {
 		totalSize = *info.Length
@@ -39,7 +38,7 @@ func main() {
 			totalSize += f.Length
 		}
 	}
-	lastPieceLength := totalSize - (totalPieces-1) * info.PieceLength
+	lastPieceLength := totalSize - (totalPieces-1)*info.PieceLength
 
 	peers, err := tracker.GetPeers(data)
 	if err != nil {
@@ -51,130 +50,41 @@ func main() {
 		panic("no peers")
 	}
 
-	completed := 0
+	maxPeers := 20
+	sem := make(chan struct{}, maxPeers)
 
-	for completed < totalPieces {
-		progress := false
+	var wg sync.WaitGroup
 
-		for _, p := range peers {
-			if completed >= totalPieces {
-				break
-			}
+	for _, p := range peers {
+		addr := p.String()
 
-			fmt.Println("Connecting to peer:", p)
+		sem <- struct{}{} // acquire slot
+		wg.Add(1)
 
-			conn, err := net.DialTimeout("tcp", p.String(), 5*time.Second)
-			if err != nil {
-				continue
-			}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }() // release slot (like a counting semaphore)
 
-			conn.SetDeadline(time.Now().Add(30 * time.Second))
-
-			hs, err := tracker.BuildHandshake(data, "-GT0001-123456789012")
-			if err != nil {
-				conn.Close()
-				continue // skip to the next peer
-			}
-
-			if _, err := conn.Write(hs); err != nil {
-				conn.Close()
-				continue
-			}
-
-			resp := make([]byte, 68)
-			if _, err := io.ReadFull(conn, resp); err != nil {
-				conn.Close()
-				continue
-			}
-
-			fmt.Println("Handshake OK")
-
-			var bitfield tracker.Bitfield
-
-			for { // wait for bitfield
-				id, payload, err := pr.ReadMessage(conn)
-				if err != nil {
-					break
-				}
-				if id == 5 {
-					bitfield = payload
-					break
-				}
-			}
-
-			if bitfield == nil {
-				fmt.Println("No bitfield -> skip")
-				conn.Close()
-				continue
-			}
-
-			if _, err := conn.Write(tracker.BuildInterested()); err != nil {
-				conn.Close()
-				continue
-			}
-
-			unchoked := false
-			for {
-				id, _, err := pr.ReadMessage(conn)
-				if err != nil {
-					break
-				}
-				if id == 1 {
-					unchoked = true
-					fmt.Println("Unchoked!")
-					break
-				}
-			}
-
-			if !unchoked {
-				fmt.Println("Never unchoked -> skip")
-				conn.Close()
-				continue
-			}
-
-			for {
-				if completed >= totalPieces {
-					conn.Close()
-					break
-				}
-
-				pieceIndex, ok := pm.PickPiece(bitfield)
-				if !ok {
-					fmt.Println("Peer exhausted")
-					break
-				}
-
-				pieceLength := info.PieceLength
-				if pieceIndex == totalPieces - 1 {
-					pieceLength = lastPieceLength
-				}
-
-				fmt.Println("Downloading piece:", pieceIndex)
-
-				piece, err := pr.DownloadPiece(conn, pieceIndex, pieceLength)
-				fmt.Println("PIECE downloaded:", len(piece))
-				if err != nil {
-					fmt.Println("Failed piece:", pieceIndex)
-					fmt.Println("Failed piece error:", err)
-					pm.MarkFailed(pieceIndex)
-					continue
-				}
-
-				pm.MarkDone(pieceIndex)
-				completed++
-				progress = true
-
-				fmt.Println("Done piece:", pieceIndex, "(", completed, "/", totalPieces, ")")
-			}
-
-			conn.Close()
-		}
-
-		if !progress {
-			fmt.Println("No progress -> retrying...")
-			time.Sleep(2 * time.Second)
-		}
+			pr.PeerWorker(addr, pm, data, &info, lastPieceLength)
+		}()
 	}
+
+	// progress monitor (optional but very useful)
+	go func() {
+		for {
+			done := pm.Done()
+			fmt.Printf("\rProgress: %d / %d", done, totalPieces)
+
+			if done >= totalPieces {
+				fmt.Println("\nDownload complete!")
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	wg.Wait()
 
 	fmt.Println("\nAll pieces downloaded!")
 }

@@ -7,51 +7,100 @@ import (
 	"net"
 )
 
-// For now: one peer one piece
+const MaxRequest = 5
+const blockSize = 16 * 1024
+
 func DownloadPiece(conn net.Conn, pieceIndex int, pieceLength int) ([]byte, error) {
 	buf := make([]byte, pieceLength)
 
-	const blockSize = 16 * 1024
+	type blockState struct {
+		requested bool
+		received  bool
+	}
 
+	// track each block by offset
+	blocks := make(map[int]*blockState)
+
+	// initialize all blocks
 	for offset := 0; offset < pieceLength; offset += blockSize {
-		length := blockSize
-		if offset+length > pieceLength {
-			length = pieceLength - offset
-		}
+		blocks[offset] = &blockState{}
+	}
 
-		// send ONE request
-		req := tracker.BuildRequest(uint32(pieceIndex), uint32(offset), uint32(length))
-		if _, err := conn.Write(req); err != nil {
-			return nil, err
-		}
+	inflight := 0
+	completed := 0
+	totalBlocks := len(blocks)
 
-		// wait for ONE block
-		for {
-			id, payload, err := ReadMessage(conn)
-			if err != nil {
+	nextOffset := 0
+
+	for completed < totalBlocks {
+
+		// fill pipeline
+		for inflight < MaxRequest && nextOffset < pieceLength {
+			state := blocks[nextOffset]
+			if state.requested {
+				nextOffset += blockSize
+				continue
+			}
+
+			length := blockSize
+			if nextOffset+length > pieceLength {
+				length = pieceLength - nextOffset
+			}
+
+			req := tracker.BuildRequest(
+				uint32(pieceIndex),
+				uint32(nextOffset),
+				uint32(length),
+			)
+
+			if _, err := conn.Write(req); err != nil {
 				return nil, err
 			}
 
-			if id != 7 {
-				continue
-			}
+			state.requested = true
+			inflight++
 
-			msgIndex := int(binary.BigEndian.Uint32(payload[0:4]))
-			begin := int(binary.BigEndian.Uint32(payload[4:8]))
-			block := payload[8:]
-
-			// VERY IMPORTANT check
-			if msgIndex != pieceIndex {
-				continue
-			}
-
-			if begin + len(block) > len(buf) {
-				continue
-			}
-			
-			copy(buf[begin:], block)
-			break
+			nextOffset += blockSize
 		}
+
+		// receive response
+		id, payload, err := ReadMessage(conn)
+		if err != nil {
+			return nil, err
+		}
+
+		if id != 7 {
+			continue
+		}
+
+		msgIndex := int(binary.BigEndian.Uint32(payload[0:4]))
+		begin := int(binary.BigEndian.Uint32(payload[4:8]))
+		block := payload[8:]
+
+		// validate
+		if msgIndex != pieceIndex {
+			continue
+		}
+
+		state, ok := blocks[begin]
+		if !ok {
+			continue
+		}
+
+		if state.received {
+			continue // duplicate block
+		}
+
+		if begin+len(block) > len(buf) {
+			continue
+		}
+
+		// copy data
+		copy(buf[begin:], block)
+
+		state.received = true
+		inflight--
+		completed++
 	}
 
 	return buf, nil
