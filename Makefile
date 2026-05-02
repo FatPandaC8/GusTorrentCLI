@@ -48,6 +48,10 @@ bench-utils:
 	go test -bench=. -benchmem -cpuprofile=utils_cpu.out ./internal/utils
 	go tool pprof -http=:8080 utils_cpu.out
 
+bench-peer:
+	go test -bench=. -benchmem -cpuprofile=peer_cpu.out ./internal/peer
+	go tool pprof -http=:8080 peer_cpu.out
+
 # FUZZ 
 fuzz-bencode:
 	go test -fuzz=Fuzz -fuzztime=20s ./internal/bencode
