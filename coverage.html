@@ -1,0 +1,1273 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">gustorrent/cmd/main.go (0.0%)</option>
+				
+				<option value="file1">gustorrent/internal/bencode/bencode.go (100.0%)</option>
+				
+				<option value="file2">gustorrent/internal/metadata/metadata.go (100.0%)</option>
+				
+				<option value="file3">gustorrent/internal/peer/connect.go (81.0%)</option>
+				
+				<option value="file4">gustorrent/internal/peer/piece_manage.go (51.9%)</option>
+				
+				<option value="file5">gustorrent/internal/tracker/http.go (100.0%)</option>
+				
+				<option value="file6">gustorrent/internal/tracker/message.go (100.0%)</option>
+				
+				<option value="file7">gustorrent/internal/utils/convert.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "fmt"
+        "gustorrent/internal/metadata"
+        pr "gustorrent/internal/peer"
+        "gustorrent/internal/tracker"
+        "log"
+        "net"
+        "net/http"
+        "os"
+        "sync"
+        "time"
+)
+
+var retries int = 3
+var standardClient tracker.HTTPClient = http.DefaultClient
+
+func main() <span class="cov0" title="0">{
+        if len(os.Args) &lt; 2 </span><span class="cov0" title="0">{
+                fmt.Println("Usage: app &lt;torrent-file&gt;")
+                return
+        }</span>
+
+        <span class="cov0" title="0">data, err := os.ReadFile(os.Args[1])
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov0" title="0">info, _, err := metadata.GetMetadata(data)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov0" title="0">totalPieces := len(info.Pieces) / 20
+        pm := pr.NewPieceManager(totalPieces)
+
+        // compute total size (for last piece)
+        totalSize := 0
+        if info.Length != nil </span><span class="cov0" title="0">{
+                totalSize = *info.Length
+        }</span> else<span class="cov0" title="0"> {
+                for _, f := range info.Files </span><span class="cov0" title="0">{
+                        totalSize += f.Length
+                }</span>
+        }
+        <span class="cov0" title="0">lastPieceLength := totalSize - (totalPieces-1)*info.PieceLength
+
+        var peers []tracker.Peer
+        for retries &gt; 0 </span><span class="cov0" title="0">{
+                peers, err = tracker.GetPeers(standardClient, data)
+                if netErr, ok := err.(net.Error); ok &amp;&amp; netErr.Timeout() </span><span class="cov0" title="0">{
+                        log.Println(err)
+                        fmt.Println("Retries left:", retries)
+                        retries--
+                }</span> else<span class="cov0" title="0"> {
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">fmt.Println("Peers:", len(peers))
+        if len(peers) == 0 </span><span class="cov0" title="0">{
+                panic("no peers")</span>
+        }
+
+        <span class="cov0" title="0">maxPeers := 20
+        sem := make(chan struct{}, maxPeers)
+
+        var wg sync.WaitGroup
+
+        for _, p := range peers </span><span class="cov0" title="0">{
+                addr := p.String()
+
+                sem &lt;- struct{}{} // acquire slot
+                wg.Add(1)
+
+                go func() </span><span class="cov0" title="0">{
+                        defer wg.Done()
+                        defer func() </span><span class="cov0" title="0">{ &lt;-sem }</span>() // release slot (like a counting semaphore)
+
+                        <span class="cov0" title="0">pr.PeerWorker(addr, pm, data, &amp;info, lastPieceLength)</span>
+                }()
+        }
+
+        // progress monitor (optional but very useful)
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                for </span><span class="cov0" title="0">{
+                        done := pm.Done()
+                        fmt.Printf("\rProgress: %d / %d", done, totalPieces)
+
+                        if done &gt;= totalPieces </span><span class="cov0" title="0">{
+                                fmt.Println("\nDownload complete!")
+                                return
+                        }</span>
+
+                        <span class="cov0" title="0">time.Sleep(1 * time.Second)</span>
+                }
+        }()
+
+        <span class="cov0" title="0">wg.Wait()
+
+        fmt.Println("\nAll pieces downloaded!")</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package bencode
+
+import (
+        "bytes"
+        "fmt"
+        "gustorrent/internal/utils"
+)
+
+type Value struct {
+        Type rune // 'i', 's', 'l', 'd'
+        Int  int
+        Str  []byte
+        List []Value
+        Dict map[string]Value
+
+        Start int
+        End   int
+}
+
+// [internal] Returns Value, recursive position, error
+func Decode(data []byte, pos int) (Value, int, error) <span class="cov8" title="1">{
+        if pos &gt;= len(data) </span><span class="cov8" title="1">{
+                return Value{}, 0, fmt.Errorf("unexpected eof")
+        }</span>
+
+        <span class="cov8" title="1">switch data[pos] </span>{
+        case 'i':<span class="cov8" title="1">
+                end := bytes.IndexByte(data[pos:], 'e')
+                if end == -1 </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("unterminated int")
+                }</span>
+                <span class="cov8" title="1">end += pos
+                n, err := utils.Atoi(data[pos+1 : end])
+                if err != nil </span><span class="cov8" title="1">{
+                        return Value{}, 0, err
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 'i', Int: n, Start: pos, End: end + 1}, end + 1 - pos, nil</span>
+
+        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':<span class="cov8" title="1">
+                colon := bytes.IndexByte(data[pos:], ':')
+                if colon == -1 </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("missing colon")
+                }</span>
+                <span class="cov8" title="1">colon += pos
+                length, err := utils.Atoi(data[pos:colon])
+                if err != nil </span><span class="cov8" title="1">{
+                        return Value{}, 0, err
+                }</span>
+                <span class="cov8" title="1">start := colon + 1
+                end := start + length
+                if end &gt; len(data) </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("string out of bounds")
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 's', Str: data[start:end], Start: pos, End: end}, end - pos, nil</span>
+
+        case 'l':<span class="cov8" title="1">
+                var items []Value
+                cur := pos + 1 // skip 'l'
+                for cur &lt; len(data) &amp;&amp; data[cur] != 'e' </span><span class="cov8" title="1">{
+                        v, n, err := Decode(data, cur)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return Value{}, 0, err
+                        }</span>
+                        <span class="cov8" title="1">items = append(items, v)
+                        cur += n</span>
+                }
+                <span class="cov8" title="1">if cur &gt;= len(data) </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("unterminated list")
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 'l', List: items, Start: pos, End: cur + 1}, cur + 1 - pos, nil</span> // +1 for 'e'
+
+        case 'd':<span class="cov8" title="1">
+                dict := map[string]Value{}
+                cur := pos + 1 // skip 'd'
+                for cur &lt; len(data) &amp;&amp; data[cur] != 'e' </span><span class="cov8" title="1">{
+                        key, n, err := Decode(data, cur)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return Value{}, 0, err
+                        }</span>
+                        <span class="cov8" title="1">if key.Type != 's' </span><span class="cov8" title="1">{
+                                return Value{}, 0, fmt.Errorf("dict key must be a string")
+                        }</span>
+                        <span class="cov8" title="1">cur += n
+                        val, n, err := Decode(data, cur)
+                        if err != nil </span><span class="cov8" title="1">{
+                                return Value{}, 0, err
+                        }</span>
+                        <span class="cov8" title="1">dict[string(key.Str)] = val
+                        cur += n</span>
+                }
+                <span class="cov8" title="1">if cur &gt;= len(data) </span><span class="cov8" title="1">{
+                        return Value{}, 0, fmt.Errorf("unterminated dict")
+                }</span>
+                <span class="cov8" title="1">return Value{Type: 'd', Dict: dict, Start: pos, End: cur + 1}, cur + 1 - pos, nil</span> // +1 for 'e'
+        }
+
+        <span class="cov8" title="1">return Value{}, 0, fmt.Errorf("unexpected byte: %c", data[pos])</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package metadata
+
+import (
+        "crypto/sha1"
+        "fmt"
+        "gustorrent/internal/bencode"
+)
+
+type Info struct {
+        PieceLength int
+        Pieces      []byte
+        Name        string
+        Announce    string // url to the tracker
+
+        // optional
+        Private *int // being a pointer meaning it could be nil
+
+        // single-file
+        Length *int
+        Md5sum *string
+
+        // multi-file
+        Files []FileInfo
+}
+
+type FileInfo struct {
+        Length int
+        Md5sum *string
+        Path   []string
+}
+
+func GetMetadata(data []byte) (Info, [20]byte, error) <span class="cov8" title="1">{
+        rootVal, _, err := bencode.Decode(data, 0)
+        if err != nil </span><span class="cov8" title="1">{
+                return Info{}, [20]byte{}, err
+        }</span>
+
+        <span class="cov8" title="1">root := rootVal.Dict
+        announceVal, ok := root["announce"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, [20]byte{}, fmt.Errorf("missing announce")
+        }</span>
+
+        <span class="cov8" title="1">infoVal, ok := root["info"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, [20]byte{}, fmt.Errorf("missing info dict")
+        }</span>
+
+        <span class="cov8" title="1">info, err := parseInfo(infoVal)
+        if err != nil </span><span class="cov8" title="1">{
+                return Info{}, [20]byte{}, err
+        }</span>
+
+        <span class="cov8" title="1">infoHash := infoHash(data, infoVal)
+
+        info.Announce = string(announceVal.Str)
+
+        return info, infoHash, nil</span>
+}
+
+func parseInfo(v bencode.Value) (Info, error) <span class="cov8" title="1">{
+        m := v.Dict
+
+        info := Info{}
+
+        // required
+        PieceLengthVal, ok := m["piece length"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing length")
+        }</span>
+        <span class="cov8" title="1">PiecesVal, ok := m["pieces"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing pieces")
+        }</span>
+        <span class="cov8" title="1">NameVal, ok := m["name"]
+        if !ok </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("missing name")
+        }</span>
+        <span class="cov8" title="1">info.PieceLength = PieceLengthVal.Int
+        info.Pieces = PiecesVal.Str
+        info.Name = string(NameVal.Str)
+
+        // validate pieces
+        if len(info.Pieces)%20 != 0 </span><span class="cov8" title="1">{
+                return Info{}, fmt.Errorf("invalid pieces length")
+        }</span>
+
+        // optional: private
+        <span class="cov8" title="1">if val, ok := m["private"]; ok </span><span class="cov8" title="1">{
+                x := val.Int
+                info.Private = &amp;x
+        }</span>
+
+        // mode detection
+        <span class="cov8" title="1">if filesVal, ok := m["files"]; ok </span><span class="cov8" title="1">{
+                files := parseFiles(filesVal)
+                info.Files = files
+
+        }</span> else<span class="cov8" title="1"> if lengthVal, ok := m["length"]; ok </span><span class="cov8" title="1">{
+                x := lengthVal.Int
+                info.Length = &amp;x
+
+                if md5, ok := m["md5sum"]; ok </span><span class="cov8" title="1">{
+                        s := string(md5.Str)
+                        info.Md5sum = &amp;s
+                }</span>
+
+        } else<span class="cov8" title="1"> {
+                return Info{}, fmt.Errorf("invalid: neither files nor length")
+        }</span>
+
+        <span class="cov8" title="1">return info, nil</span>
+}
+
+func parseFiles(v bencode.Value) []FileInfo <span class="cov8" title="1">{
+        var result []FileInfo
+
+        for _, item := range v.List </span><span class="cov8" title="1">{
+                m := item.Dict
+
+                lengthVal := m["length"]
+
+                pathVal := m["path"]
+
+                f := FileInfo{
+                        Length: lengthVal.Int,
+                        Path:   toStringSlice(pathVal.List),
+                }
+
+                if md5, ok := m["md5sum"]; ok </span><span class="cov8" title="1">{
+                        s := string(md5.Str)
+                        f.Md5sum = &amp;s
+                }</span>
+
+                <span class="cov8" title="1">result = append(result, f)</span>
+        }
+
+        <span class="cov8" title="1">return result</span>
+}
+
+func toStringSlice(list []bencode.Value) []string <span class="cov8" title="1">{
+        res := make([]string, len(list))
+        for i, v := range list </span><span class="cov8" title="1">{
+                res[i] = string(v.Str)
+        }</span>
+        <span class="cov8" title="1">return res</span>
+}
+
+func infoHash(data []byte, infoVal bencode.Value) [20]byte <span class="cov8" title="1">{
+        raw := data[infoVal.Start:infoVal.End]
+        return sha1.Sum(raw)
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package peer
+
+import (
+        "encoding/binary"
+        "gustorrent/internal/tracker"
+        "io"
+        "net"
+)
+
+const MaxRequest = 5
+const blockSize = 16 * 1024
+
+func DownloadPiece(conn net.Conn, pieceIndex int, pieceLength int) ([]byte, error) <span class="cov8" title="1">{
+        buf := make([]byte, pieceLength)
+
+        type blockState struct {
+                requested bool
+                received  bool
+        }
+
+        // track each block by offset
+        blocks := make(map[int]*blockState)
+
+        // initialize all blocks
+        for offset := 0; offset &lt; pieceLength; offset += blockSize </span><span class="cov8" title="1">{
+                blocks[offset] = &amp;blockState{}
+        }</span>
+
+        <span class="cov8" title="1">inflight := 0
+        completed := 0
+        totalBlocks := len(blocks)
+
+        nextOffset := 0
+
+        for completed &lt; totalBlocks </span><span class="cov8" title="1">{
+
+                // fill pipeline
+                for inflight &lt; MaxRequest &amp;&amp; nextOffset &lt; pieceLength </span><span class="cov8" title="1">{
+                        state := blocks[nextOffset]
+                        if state.requested </span><span class="cov0" title="0">{
+                                nextOffset += blockSize
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">length := blockSize
+                        if nextOffset+length &gt; pieceLength </span><span class="cov8" title="1">{
+                                length = pieceLength - nextOffset
+                        }</span>
+
+                        <span class="cov8" title="1">req := tracker.BuildRequest(
+                                uint32(pieceIndex),
+                                uint32(nextOffset),
+                                uint32(length),
+                        )
+
+                        if _, err := conn.Write(req); err != nil </span><span class="cov0" title="0">{
+                                return nil, err
+                        }</span>
+
+                        <span class="cov8" title="1">state.requested = true
+                        inflight++
+
+                        nextOffset += blockSize</span>
+                }
+
+                // receive response
+                <span class="cov8" title="1">id, payload, err := ReadMessage(conn)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">if id != 7 </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">msgIndex := int(binary.BigEndian.Uint32(payload[0:4]))
+                begin := int(binary.BigEndian.Uint32(payload[4:8]))
+                block := payload[8:]
+
+                // validate
+                if msgIndex != pieceIndex </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">state, ok := blocks[begin]
+                if !ok </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if state.received </span><span class="cov0" title="0">{
+                        continue</span> // duplicate block
+                }
+
+                <span class="cov8" title="1">if begin+len(block) &gt; len(buf) </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                // copy data
+                <span class="cov8" title="1">copy(buf[begin:], block)
+
+                state.received = true
+                inflight--
+                completed++</span>
+        }
+
+        <span class="cov8" title="1">return buf, nil</span>
+}
+
+func ReadMessage(conn net.Conn) (uint8, []byte, error) <span class="cov8" title="1">{
+        lenBuf := make([]byte, 4)
+        if _, err := io.ReadFull(conn, lenBuf); err != nil </span><span class="cov0" title="0">{ // use this if tcp decides to split messages
+                return 0, nil, err
+        }</span>
+
+        <span class="cov8" title="1">length := binary.BigEndian.Uint32(lenBuf)
+
+        // 2. keep-alive
+        if length == 0 </span><span class="cov8" title="1">{
+                return 255, nil, nil // special ID for keep-alive
+        }</span>
+
+        // 3. read full message
+        <span class="cov8" title="1">msg := make([]byte, length)
+        if _, err := io.ReadFull(conn, msg); err != nil </span><span class="cov0" title="0">{
+                return 0, nil, err
+        }</span>
+
+        // 4. first byte = message ID
+        <span class="cov8" title="1">id := msg[0]
+        payload := msg[1:]
+
+        return id, payload, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package peer
+
+import (
+        "crypto/sha1"
+        "gustorrent/internal/metadata"
+        "gustorrent/internal/tracker"
+        "io"
+        "net"
+        "sync"
+        "time"
+)
+
+type PieceState int
+
+const (
+        Missing PieceState = iota
+        Downloading
+        Done
+)
+
+type PieceManager struct {
+        mu sync.Mutex
+
+        total int
+        done  int
+
+        states []PieceState
+        freq   map[int]int
+
+        endgame  bool
+        inFlight map[int]bool
+}
+
+func NewPieceManager(totalPieces int) *PieceManager <span class="cov8" title="1">{
+        return &amp;PieceManager{
+                states:   make([]PieceState, totalPieces),
+                total:    totalPieces,
+                freq:     make(map[int]int),
+                inFlight: make(map[int]bool),
+        }
+}</span>
+
+// You should NOT double count if same peer reconnects, but we’ll ignore that for now (MVP is fine).
+func (p *PieceManager) AddPeerBitfield(b tracker.Bitfield) <span class="cov8" title="1">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        for i := 0; i &lt; p.total; i++ </span><span class="cov8" title="1">{
+                if b.Has(i) </span><span class="cov8" title="1">{
+                        p.freq[i]++
+                }</span>
+        }
+}
+
+func (p *PieceManager) checkEndgame() <span class="cov8" title="1">{
+        remaining := 0
+
+        for i := 0; i &lt; p.total; i++ </span><span class="cov8" title="1">{
+                if p.states[i] == Missing </span><span class="cov8" title="1">{
+                        remaining++
+                }</span>
+        }
+
+        <span class="cov8" title="1">if remaining &lt;= 5 </span><span class="cov8" title="1">{ // threshold (common heuristic)
+                p.endgame = true
+        }</span>
+}
+
+// Pick a piece from the bitfield then return the piece_index and error
+// score = rarity + peer speed + availability + choking state &lt;- real bittorrent client do this
+func (p *PieceManager) PickPiece(bitfield tracker.Bitfield) (int, bool) <span class="cov8" title="1">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        p.checkEndgame()
+
+        if !p.endgame </span><span class="cov8" title="1">{
+
+                best := -1
+                // ^ is bitwise not in golang -&gt; flip 0 to all ones
+                bestFreq := int(^uint(0) &gt;&gt; 1) // max int
+
+                for i := 0; i &lt; p.total; i++ </span><span class="cov8" title="1">{
+                        if p.states[i] != Missing </span><span class="cov8" title="1">{
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">if !bitfield.Has(i) </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">freq := p.freq[i]
+                        if freq == 0 </span><span class="cov8" title="1">{
+                                freq = 1
+                        }</span>
+
+                        <span class="cov8" title="1">if freq &lt; bestFreq </span><span class="cov8" title="1">{
+                                bestFreq = freq
+                                best = i
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if best == -1 </span><span class="cov0" title="0">{
+                        return -1, false
+                }</span>
+                <span class="cov8" title="1">p.states[best] = Downloading
+                return best, true</span>
+        }
+
+        <span class="cov8" title="1">for i := 0; i &lt; p.total; i++ </span><span class="cov8" title="1">{
+                if p.states[i] == Missing &amp;&amp; bitfield.Has(i) </span><span class="cov8" title="1">{
+                        if p.inFlight[i] </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">p.inFlight[i] = true
+                        p.states[i] = Downloading
+                        return i, true</span>
+                }
+        }
+        <span class="cov8" title="1">return -1, false</span>
+}
+
+func (p *PieceManager) MarkDone(index int) <span class="cov8" title="1">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        if p.states[index] != Done </span><span class="cov8" title="1">{
+                p.states[index] = Done
+                p.done++
+        }</span>
+
+        <span class="cov8" title="1">delete(p.inFlight, index)
+        p.checkEndgame()</span>
+}
+
+func (p *PieceManager) MarkFailed(index int) <span class="cov8" title="1">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        p.states[index] = Missing
+        delete(p.inFlight, index)
+}</span>
+
+func (p *PieceManager) MarkInFlightDone(index int) <span class="cov0" title="0">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        delete(p.inFlight, index)
+}</span>
+
+func PeerWorker(addr string, pm *PieceManager, data []byte, info *metadata.Info, lastPieceLength int) <span class="cov0" title="0">{
+        conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov0" title="0">defer conn.Close()
+
+        // handshake
+        hs, err := tracker.BuildHandshake(data, "-GT0001-123456789012")
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov0" title="0">if _, err := conn.Write(hs); err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov0" title="0">resp := make([]byte, 68)
+        if _, err := io.ReadFull(conn, resp); err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // read bitfield
+        <span class="cov0" title="0">var bitfield []byte
+        for </span><span class="cov0" title="0">{
+                id, payload, err := ReadMessage(conn)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov0" title="0">if id == 5 </span><span class="cov0" title="0">{
+                        bitfield = payload
+                        pm.AddPeerBitfield(tracker.Bitfield(bitfield))
+                        break</span>
+                }
+        }
+
+        // interested
+        <span class="cov0" title="0">conn.Write(tracker.BuildInterested())
+
+        // wait unchoke
+        for </span><span class="cov0" title="0">{
+                id, _, err := ReadMessage(conn)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov0" title="0">if id == 1 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">if pm.Done() &gt;= pm.Total() </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov0" title="0">for </span><span class="cov0" title="0">{
+                pieceIndex, ok := pm.PickPiece(bitfield)
+                if !ok </span><span class="cov0" title="0">{
+                        return
+                }</span>
+
+                <span class="cov0" title="0">pieceLength := info.PieceLength
+                if pieceIndex == pm.total-1 </span><span class="cov0" title="0">{
+                        pieceLength = lastPieceLength
+                }</span>
+
+                <span class="cov0" title="0">piece, err := DownloadPiece(conn, pieceIndex, pieceLength)
+                if err != nil </span><span class="cov0" title="0">{
+                        pm.MarkFailed(pieceIndex)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">if !VerifyPiece(info, pieceIndex, piece) </span><span class="cov0" title="0">{
+                        pm.MarkFailed(pieceIndex)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">pm.MarkDone(pieceIndex)</span>
+        }
+}
+
+func VerifyPiece(info *metadata.Info, index int, data []byte) bool <span class="cov8" title="1">{
+        hashStart := index * 20
+        expected := info.Pieces[hashStart : hashStart+20]
+
+        actual := sha1.Sum(data)
+
+        return string(actual[:]) == string(expected)
+}</span>
+
+func (pm *PieceManager) Done() int <span class="cov8" title="1">{
+        pm.mu.Lock()
+        defer pm.mu.Unlock()
+        return pm.done
+}</span>
+
+func (pm *PieceManager) Total() int <span class="cov0" title="0">{
+        return pm.total
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package tracker
+
+import (
+        "encoding/binary"
+        "fmt"
+        "gustorrent/internal/bencode"
+        "gustorrent/internal/metadata"
+        "io"
+        "net"
+        "net/http"
+        "net/url"
+)
+
+type TrackerResponse struct {
+        Interval int
+        Peers    []Peer
+}
+
+type Peer struct {
+        IP   string
+        Port uint16
+}
+
+type HTTPClient interface {
+        Get(url string) (*http.Response, error)
+}
+
+var client HTTPClient = http.DefaultClient
+
+func (p Peer) String() string <span class="cov8" title="1">{
+        return fmt.Sprintf("%s:%d", p.IP, (p.Port))
+}</span>
+
+func BuildTrackerURL(announce string, infoHash [20]byte, totalLength int) string <span class="cov8" title="1">{
+        params := url.Values{}
+
+        // TODO: make the peer id from config
+        params.Set("info_hash", string(infoHash[:]))  // raw bytes
+        params.Set("peer_id", "-GT0001-123456789012") // 20 bytes exactly, can be anyname
+        params.Set("port", "6881")
+        params.Set("uploaded", "0")
+        params.Set("downloaded", "0")
+        params.Set("left", fmt.Sprintf("%d", totalLength))
+
+        // 6 bytes per peer:
+        // [IP (4 bytes)][PORT (2 bytes)]
+        params.Set("compact", "1")
+
+        return announce + "?" + params.Encode()
+}</span>
+
+func DecodePeers(body []byte) []Peer <span class="cov8" title="1">{
+        var peers []Peer
+        // 6 is because that's the length of 1 peer (4 ip: 2 port above)
+        for i := 0; i+6 &lt;= len(body); i += 6 </span><span class="cov8" title="1">{
+                peers = append(peers, Peer{
+                        IP:   net.IP(body[i : i+4]).String(),
+                        Port: binary.BigEndian.Uint16(body[i+4 : i+6]),
+                })
+        }</span>
+
+        <span class="cov8" title="1">return peers</span>
+}
+
+func GetPeers(client HTTPClient, data []byte) ([]Peer, error) <span class="cov8" title="1">{
+        info, infoHash, err := metadata.GetMetadata(data)
+        if err != nil </span><span class="cov8" title="1">{
+                return []Peer{}, err
+        }</span>
+
+        <span class="cov8" title="1">var totalLength int
+        if info.Length != nil </span><span class="cov8" title="1">{
+                totalLength = *info.Length
+        }</span> else<span class="cov8" title="1"> {
+                for _, f := range info.Files </span><span class="cov8" title="1">{
+                        totalLength += f.Length
+                }</span>
+        }
+
+        <span class="cov8" title="1">trackerURL := BuildTrackerURL(info.Announce, infoHash, totalLength)
+
+        resp, err := client.Get(trackerURL)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        body, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov8" title="1">{
+                return []Peer{}, err
+        }</span>
+
+        <span class="cov8" title="1">parsed_body, _, err := bencode.Decode(body, 0)
+        if err != nil </span><span class="cov8" title="1">{
+                return []Peer{}, err
+        }</span>
+
+        <span class="cov8" title="1">return DecodePeers(parsed_body.Dict["peers"].Str), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package tracker
+
+import (
+        "encoding/binary"
+        "gustorrent/internal/metadata"
+)
+
+type Handshake struct {
+        Pstrlen  byte
+        Pstr     string
+        Reserved [8]byte
+        Infohash [20]byte
+        Peerid   [20]byte
+}
+
+func BuildHandshake(data []byte, peerId string) ([]byte, error) <span class="cov8" title="1">{
+        _, infoHash, err := metadata.GetMetadata(data)
+        if err != nil </span><span class="cov8" title="1">{
+                return []byte{}, err
+        }</span>
+
+        <span class="cov8" title="1">pstr := "BitTorrent protocol" // according to version 1.0 of Bittorrent
+
+        buf := make([]byte, 49+len(pstr)) // 1 + 19 + 8 + 20 + 20 = 68
+
+        // pstrlen
+        buf[0] = byte(len(pstr))
+
+        // pstr
+        copy(buf[1:], pstr)
+
+        // reserved
+        // 8 bytes already zeroed by make by default
+
+        // infoHash
+        copy(buf[1+len(pstr)+8:], infoHash[:])
+
+        // peer id
+        copy(buf[1+len(pstr)+8+20:], []byte(peerId))
+
+        return buf, nil</span>
+}
+
+func BuildKeepAlive() []byte <span class="cov8" title="1">{
+        // keep-alive: &lt;len=0000&gt;
+
+        // The keep-alive message is a message with zero bytes, specified with the length prefix set to zero.
+        // There is no message ID and no payload.
+        // Peers may close a connection if they receive no messages (keep-alive or any other message) for a certain period of time,
+        // so a keep-alive message must be sent to maintain the connection alive if no command have been sent for a given amount of time.
+        // This amount of time is generally two minutes.
+
+        return []byte{
+                0, 0, 0, 0,
+        }
+}</span>
+
+func BuildChoke() []byte <span class="cov8" title="1">{
+        // choke: &lt;len=0001&gt;&lt;id=0&gt;
+
+        // The choke message is fixed-length and has no payload.
+
+        return []byte{
+                0, 0, 0, 1, // length = 1
+                0, // message id = choke
+        }
+}</span>
+
+func BuildUnchoke() []byte <span class="cov8" title="1">{
+        // unchoke: &lt;len=0001&gt;&lt;id=1&gt;
+
+        // The choke message is fixed-length and has no payload.
+
+        return []byte{
+                0, 0, 0, 1, // length = 1
+                1, // message id = unchoke
+        }
+}</span>
+
+func BuildInterested() []byte <span class="cov8" title="1">{
+        /*
+           interested: &lt;len=0001&gt;&lt;id=2&gt;
+
+           The interested message is fixed-length and has no payload.
+        */
+        return []byte{
+                0, 0, 0, 1,
+                2,
+        }
+}</span>
+
+func BuildUninterested() []byte <span class="cov8" title="1">{
+        /*
+           uninterested: &lt;len=0001&gt;&lt;id=3&gt;
+
+           The interested message is fixed-length and has no payload.
+        */
+        return []byte{
+                0, 0, 0, 1,
+                3,
+        }
+}</span>
+
+func BuildHave(pieceIndex int) []byte <span class="cov8" title="1">{
+        /*
+                have: &lt;len=0005&gt;&lt;id=4&gt;&lt;piece index&gt;
+
+                The have message is fixed length.
+                The payload is the zero-based index of a piece that has just been successfully downloaded and verified via the hash.
+                        Piece index is 32 bit in == 4 bytes int
+
+                Implementer's Note:
+                    That is the strict definition, in reality some games may be played.
+                    In particular because peers are extremely unlikely to download pieces that they already have,
+                    a peer may choose not to advertise having a piece to a peer that already has that piece
+        */
+
+        buf := make([]byte, 9)
+
+        binary.BigEndian.PutUint32(buf[0:4], 5)
+        buf[4] = 4
+
+        binary.BigEndian.PutUint32(buf[5:9], uint32(pieceIndex))
+
+        return buf
+}</span>
+
+type Bitfield []byte
+
+func (b Bitfield) Set(piece int) <span class="cov8" title="1">{
+        byteIndex := piece / 8 // 1 byte = 8 bits
+        bitIndex := piece % 8  // which bit in those 1 byte
+
+        b[byteIndex] |= 1 &lt;&lt; (7 - bitIndex)
+}</span>
+
+func (b Bitfield) Has(piece int) bool <span class="cov8" title="1">{
+        byteIndex := piece / 8
+        bitIndex := piece % 8
+
+        return b[byteIndex]&amp;(1&lt;&lt;(7-bitIndex)) != 0
+}</span>
+
+func BuildBitfield(bitfield Bitfield) []byte <span class="cov8" title="1">{
+        /*
+                bitfield: &lt;len=0001+X&gt;&lt;id=5&gt;&lt;bitfield&gt;
+
+                The bitfield message may only be sent immediately after the handshaking sequence is completed,
+                and before any other messages are sent. It is optional, and need not be sent if a client has no pieces.
+
+                The bitfield message is variable length, where X is the length of the bitfield / numebr of pieces.
+                The payload is a bitfield representing the pieces that have been successfully downloaded.
+                The high bit in the first byte corresponds to piece index 0.
+                Bits that are cleared indicated a missing piece, and set bits indicate a valid and available piece.
+                Spare bits at the end are set to zero.
+
+                        pieces:   0 1 2 3 4 5 6 7
+                        bits:     1 1 0 1 1 0 0 1
+        */
+
+        length := len(bitfield) + 1 // 1 byte for message ID
+
+        buf := make([]byte, 4+length)
+
+        binary.BigEndian.PutUint32(buf[0:4], uint32(length))
+
+        buf[4] = 5
+
+        copy(buf[5:], bitfield)
+
+        return buf
+}</span>
+
+func BuildRequest(index, begin, length uint32) []byte <span class="cov8" title="1">{
+        /*
+                request: &lt;len=0013&gt;&lt;id=6&gt;&lt;index&gt;&lt;begin&gt;&lt;length&gt;
+                        Everything except id is 4 byte, id is 1 byte
+
+                The request message is fixed length, and is used to request a block. The payload contains the following information:
+
+                index: integer specifying the zero-based piece index
+                begin: integer specifying the zero-based byte offset within the piece
+                length: integer specifying the requested length.
+        */
+
+        buf := make([]byte, 17)
+        binary.BigEndian.PutUint32(buf[0:4], 13)
+        buf[4] = 6
+
+        binary.BigEndian.PutUint32(buf[5:9], index)
+        binary.BigEndian.PutUint32(buf[9:13], begin)
+        binary.BigEndian.PutUint32(buf[13:17], length)
+
+        return buf
+}</span>
+
+func BuildPiece(index, begin uint32, block []byte) []byte <span class="cov8" title="1">{
+        length := 9 + len(block)
+
+        buf := make([]byte, 4+length)
+
+        // length prefix
+        binary.BigEndian.PutUint32(buf[0:4], uint32(length))
+
+        // message id = 7
+        buf[4] = 7
+
+        // index
+        binary.BigEndian.PutUint32(buf[5:9], index)
+
+        // begin
+        binary.BigEndian.PutUint32(buf[9:13], begin)
+
+        // block data
+        copy(buf[13:], block)
+
+        return buf
+}</span>
+
+func BuildCancel(index, begin, length uint32) []byte <span class="cov8" title="1">{
+        buf := make([]byte, 17)
+
+        binary.BigEndian.PutUint32(buf[0:4], 13)
+
+        buf[4] = 8
+
+        binary.BigEndian.PutUint32(buf[5:9], index)
+        binary.BigEndian.PutUint32(buf[9:13], begin)
+        binary.BigEndian.PutUint32(buf[13:17], length)
+
+        return buf
+}</span>
+
+func BuildPort(port uint16) []byte <span class="cov8" title="1">{
+        buf := make([]byte, 7)
+
+        // length = 3
+        binary.BigEndian.PutUint32(buf[0:4], 3)
+
+        // id = 9
+        buf[4] = 9
+
+        // port (2 bytes)
+        binary.BigEndian.PutUint16(buf[5:7], port)
+
+        return buf
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package utils
+
+import "errors"
+
+// [HELPER] Default is base 10
+// NOTE: need to implement int overflow from input
+// uint8  : 0 to 255
+// uint16 : 0 to 65535
+// uint32 : 0 to 4294967295
+// uint64 : 0 to 18446744073709551615
+// int8   : -128 to 127
+// int16  : -32768 to 32767
+// int32  : -2147483648 to 2147483647
+// int64  : -9223372036854775808 to 9223372036854775807
+
+const (
+        MaxUint = ^uint(0)
+        MinUint = 0
+        MaxInt  = int(MaxUint &gt;&gt; 1)
+        MinInt  = -MaxInt - 1
+)
+
+func Atoi(s []byte) (int, error) <span class="cov8" title="1">{
+        if len(s) == 0 </span><span class="cov8" title="1">{
+                return 0, errors.New("empty string")
+        }</span>
+
+        <span class="cov8" title="1">i := 0
+        sign := 1
+
+        // handle sign
+        if s[0] == '-' </span><span class="cov8" title="1">{
+                sign = -1
+                i++
+                if i == len(s) </span><span class="cov8" title="1">{
+                        return 0, errors.New("invalid number")
+                }</span>
+        }
+
+        // leading zero check (bencode strict)
+        <span class="cov8" title="1">if s[i] == '0' &amp;&amp; i+1 &lt; len(s) </span><span class="cov8" title="1">{
+                return 0, errors.New("leading zero")
+        }</span>
+
+        <span class="cov8" title="1">n := 0
+
+        for ; i &lt; len(s); i++ </span><span class="cov8" title="1">{
+                ch := s[i]
+                if ch &lt; '0' || ch &gt; '9' </span><span class="cov8" title="1">{
+                        return 0, errors.New("invalid digit")
+                }</span>
+
+                <span class="cov8" title="1">digit := int(ch - '0')
+
+                // ensure the next result can be held: n * 10 + digit &lt;= MaxInt
+                if n &gt; (MaxInt-digit)/10 </span><span class="cov8" title="1">{
+                        return 0, errors.New("overflow")
+                }</span>
+
+                <span class="cov8" title="1">n = (n &lt;&lt; 3) + (n &lt;&lt; 1) + digit</span>
+        }
+
+        <span class="cov8" title="1">return sign * n, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

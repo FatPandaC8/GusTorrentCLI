@@ -67,7 +67,7 @@ func BenchmarkGetPeers(b *testing.B) {
 	)
 
 	for b.Loop() {
-		_, _ = GetPeers(data)
+		_, _ = GetPeers(standardClient, data)
 	}
 }
 

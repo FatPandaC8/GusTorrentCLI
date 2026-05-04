@@ -7,12 +7,14 @@ import (
 	"gustorrent/internal/tracker"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"time"
 )
 
 var retries int = 3
+var standardClient tracker.HTTPClient = http.DefaultClient
 
 func main() {
 	if len(os.Args) < 2 {
@@ -46,7 +48,7 @@ func main() {
 
 	var peers []tracker.Peer
 	for retries > 0 {
-		peers, err = tracker.GetPeers(data)
+		peers, err = tracker.GetPeers(standardClient, data)
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 			log.Println(err)
 			fmt.Println("Retries left:", retries)

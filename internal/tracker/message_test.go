@@ -21,6 +21,66 @@ func TestBuildChoke(t *testing.T) {
 	}
 }
 
+func TestBuildUnchoke(t *testing.T) {
+	msg := BuildUnchoke()
+
+	if len(msg) != 5 {
+		t.Fatalf("expected length 5, got %d", len(msg))
+	}
+
+	if binary.BigEndian.Uint32(msg[0:4]) != 1 {
+		t.Fatalf("expected length prefix 1")
+	}
+
+	if msg[4] != 1 {
+		t.Fatalf("expected id 1 (unchoke)")
+	}
+}
+
+func TestKeepAlive(t *testing.T) {
+	msg := BuildKeepAlive()
+
+	if len(msg) != 4 {
+		t.Fatalf("expected length 4, got %d", len(msg))
+	}
+
+	for _, b := range msg {
+        if b != 0 {
+            t.Fatal("expected all 0")
+        }
+    }
+}
+
+func TestBuildHandshake(t *testing.T) {
+	data := []byte(
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
+			"ee",
+	)
+
+	peerId := ""
+	msg, _ := BuildHandshake(data, peerId)
+
+	if len(msg) != 68 {
+		t.Fatalf("expected length 68, got %d", len(msg))
+	}
+}
+
+func TestBuildHandshakeErr(t *testing.T) {
+	data := []byte("d4:inf") // incomplete / broken structure
+
+	peerId := "1234567890"
+	_, err := BuildHandshake(data, peerId)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
 func TestBuildInterested(t *testing.T) {
 	msg := BuildInterested()
 
@@ -30,6 +90,18 @@ func TestBuildInterested(t *testing.T) {
 
 	if msg[4] != 2 {
 		t.Fatalf("expected id 2 (interested)")
+	}
+}
+
+func TestBuildUninterested(t *testing.T) {
+	msg := BuildUninterested()
+
+	if binary.BigEndian.Uint32(msg[0:4]) != 1 {
+		t.Fatalf("expected length 1")
+	}
+
+	if msg[4] != 3 {
+		t.Fatalf("expected id 3 (un-interested)")
 	}
 }
 

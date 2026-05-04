@@ -21,6 +21,12 @@ type Peer struct {
 	Port uint16
 }
 
+type HTTPClient interface {
+	Get(url string) (*http.Response, error)
+}
+
+var client HTTPClient = http.DefaultClient
+
 func (p Peer) String() string {
 	return fmt.Sprintf("%s:%d", p.IP, (p.Port))
 }
@@ -56,7 +62,7 @@ func DecodePeers(body []byte) []Peer {
 	return peers
 }
 
-func GetPeers(data []byte) ([]Peer, error) {
+func GetPeers(client HTTPClient, data []byte) ([]Peer, error) {
 	info, infoHash, err := metadata.GetMetadata(data)
 	if err != nil {
 		return []Peer{}, err
@@ -73,10 +79,12 @@ func GetPeers(data []byte) ([]Peer, error) {
 
 	trackerURL := BuildTrackerURL(info.Announce, infoHash, totalLength)
 
-	resp, err := http.Get(trackerURL)
+	resp, err := client.Get(trackerURL)
 	if err != nil {
-		return []Peer{}, err
+		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

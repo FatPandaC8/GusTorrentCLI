@@ -35,3 +35,20 @@ func BenchmarkMetadataNoHash(b *testing.B) {
 		_, _ = getMetadataNoHash(data)
 	}
 }
+
+// [test] Used specially for benchmarking, don't use for production or anything else
+func getMetadataNoHash(data []byte) (Info, error) {
+	rootVal, _, err := bencode.Decode(data, 0)
+	if err != nil {
+		return Info{}, err
+	}
+
+	infoVal := rootVal.Dict["info"]
+
+	info, err := parseInfo(infoVal)
+	if err != nil {
+		return Info{}, err
+	}
+
+	return info, nil
+}

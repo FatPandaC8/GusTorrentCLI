@@ -1,12 +1,23 @@
 package tracker
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+type fakeClient struct{}
+var standardClient = http.DefaultClient
+
+func (f fakeClient) Get(url string) (*http.Response, error) {
+	return &http.Response{
+		Body: io.NopCloser(badBody{}),
+	}, nil
+}
 
 func TestDecodePeers_Valid(t *testing.T) {
 	body := []byte{
@@ -75,7 +86,7 @@ func TestGetPeers_Success(t *testing.T) {
 			"ee",
 	)
 
-	peers, err := GetPeers(data)
+	peers, err := GetPeers(standardClient, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -86,7 +97,7 @@ func TestGetPeers_Success(t *testing.T) {
 }
 
 func TestGetPeers_MetadataError(t *testing.T) {
-	_, err := GetPeers([]byte("invalid"))
+	_, err := GetPeers(standardClient, []byte("invalid"))
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -104,7 +115,7 @@ func TestGetPeers_HTTPError(t *testing.T) {
 			"ee",
 	)
 
-	_, err := GetPeers(data)
+	_, err := GetPeers(standardClient, data)
 	if err == nil {
 		t.Fatal("expected http error")
 	}
@@ -127,7 +138,7 @@ func TestGetPeers_InvalidBencodeResponse(t *testing.T) {
 			"ee",
 	)
 
-	_, err := GetPeers(data)
+	_, err := GetPeers(standardClient, data)
 	if err == nil {
 		t.Fatal("expected decode error")
 	}
@@ -154,11 +165,19 @@ func TestGetPeers_MultiFileTotalLength(t *testing.T) {
 			"ee",
 	)
 
-	_, err := GetPeers(data)
+	_, err := GetPeers(standardClient, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+type badBody struct{}
+
+func (b badBody) Read(p []byte) (int, error) {
+	return 0, errors.New("read failed")
+}
+
+func (b badBody) Close() error { return nil }
 
 func TestGetPeers_LengthNilPanic(t *testing.T) {
 	data := []byte(
@@ -171,5 +190,33 @@ func TestGetPeers_LengthNilPanic(t *testing.T) {
 			"ee",
 	)
 
-	GetPeers(data)
+	GetPeers(standardClient, data)
+}
+
+func TestToString(t *testing.T) {
+	var p Peer = Peer{
+		IP: "123.123.123.123",
+		Port: 9090,
+	}
+	if p.String() != "123.123.123.123:9090" {
+		t.Fatalf("expected 123.123.123.123 9090, got:%s", p.String())
+	}
+}
+
+func TestGetPeers_ReadError(t *testing.T) {
+	client := fakeClient{}
+	data := []byte(
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
+			"ee",
+	)
+
+	_, err := GetPeers(client, data)
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }
