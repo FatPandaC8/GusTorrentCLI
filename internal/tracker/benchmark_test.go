@@ -59,10 +59,10 @@ func BenchmarkGetPeers(b *testing.B) {
 		"d" +
 			"8:announce" + fmt.Sprintf("%d:%s", len(server.URL), server.URL) +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-				"4:name8:file.txt" +
-				"6:lengthi100e" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
 			"ee",
 	)
 

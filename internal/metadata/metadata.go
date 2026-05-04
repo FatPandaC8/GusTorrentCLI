@@ -10,7 +10,7 @@ type Info struct {
 	PieceLength int
 	Pieces      []byte
 	Name        string
-	Announce 	string // url to the tracker
+	Announce    string // url to the tracker
 
 	// optional
 	Private *int // being a pointer meaning it could be nil
@@ -54,7 +54,7 @@ func GetMetadata(data []byte) (Info, [20]byte, error) {
 	infoHash := infoHash(data, infoVal)
 
 	info.Announce = string(announceVal.Str)
-	
+
 	return info, infoHash, nil
 }
 
@@ -153,17 +153,17 @@ func infoHash(data []byte, infoVal bencode.Value) [20]byte {
 
 // [test] Used specially for benchmarking, don't use for production or anything else
 func getMetadataNoHash(data []byte) (Info, error) {
-    rootVal, _, err := bencode.Decode(data, 0)
-    if err != nil {
-        return Info{}, err
-    }
+	rootVal, _, err := bencode.Decode(data, 0)
+	if err != nil {
+		return Info{}, err
+	}
 
-    infoVal := rootVal.Dict["info"]
+	infoVal := rootVal.Dict["info"]
 
-    info, err := parseInfo(infoVal)
-    if err != nil {
-        return Info{}, err
-    }
+	info, err := parseInfo(infoVal)
+	if err != nil {
+		return Info{}, err
+	}
 
-    return info, nil
+	return info, nil
 }

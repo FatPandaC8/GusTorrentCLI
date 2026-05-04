@@ -7,12 +7,12 @@ import (
 func TestGetMetadata_SingleFile_Minimal(t *testing.T) {
 	data := []byte(
 		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
-		"4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name8:file.txt" +
-		"6:lengthi100e" +
-		"ee",
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
+			"ee",
 	)
 
 	info, _, err := GetMetadata(data)
@@ -31,8 +31,8 @@ func TestGetMetadata_SingleFile_Minimal(t *testing.T) {
 
 func TestGetMetadata_MissingInfo(t *testing.T) {
 	data := []byte(
-		"d8:announce11:http://test" + 
-		"4:name8:file.txte",
+		"d8:announce11:http://test" +
+			"4:name8:file.txte",
 	)
 
 	_, _, err := GetMetadata(data)
@@ -43,8 +43,8 @@ func TestGetMetadata_MissingInfo(t *testing.T) {
 
 func TestGetMetadata_MissingName(t *testing.T) {
 	data := []byte(
-		"d8:announce11:http://test" + 
-		"4:infod" +
+		"d8:announce11:http://test" +
+			"4:infod" +
 			"12:piece lengthi4e" +
 			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
 			"6:lengthi200e" +
@@ -78,9 +78,9 @@ func TestGetMetadata_MissingPieces(t *testing.T) {
 		"d" +
 			"8:announce11:http://test" +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"4:name8:file.txt" +
-				"6:lengthi200e" +
+			"12:piece lengthi4e" +
+			"4:name8:file.txt" +
+			"6:lengthi200e" +
 			"ee",
 	)
 
@@ -94,7 +94,7 @@ func TestGetMetadata_PieceLengthNotMod20(t *testing.T) {
 	data := []byte(
 		"d8:announce11:http://test" +
 			"4:infod" +
-			"12:piece lengthi4e" + 
+			"12:piece lengthi4e" +
 			"6:pieces21:aaaaaaaaaaaaaaaaaaaaa" +
 			"4:name8:file.txt" +
 			"6:lengthi200e" +
@@ -111,7 +111,7 @@ func TestGetMetadata_NotFileNorLength(t *testing.T) {
 	data := []byte(
 		"d8:announce11:http://test" +
 			"4:infod" +
-			"12:piece lengthi4e" + 
+			"12:piece lengthi4e" +
 			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
 			"4:name8:file.txt" +
 			"ee",
@@ -125,14 +125,14 @@ func TestGetMetadata_NotFileNorLength(t *testing.T) {
 
 func TestParseFiles_CoversLengthAndPathOK(t *testing.T) {
 	data := []byte(
-		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" + 
-		"4:infod" +
-		"12:piece lengthi512e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name8:testname" +
-		"5:filesl" +
-		"d6:lengthi123e4:pathl8:file.txteee" +
-		"ee",
+		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
+			"4:infod" +
+			"12:piece lengthi512e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:testname" +
+			"5:filesl" +
+			"d6:lengthi123e4:pathl8:file.txteee" +
+			"ee",
 	)
 
 	info, _, err := GetMetadata(data)
@@ -162,12 +162,12 @@ func TestGetMetadata_InvalidRootType(t *testing.T) {
 func TestGetMetadata_InvalidLength(t *testing.T) {
 	data := []byte(
 		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
-		"4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name8:file.txt" +
-		"6:lengthee" +
-		"ee",
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthee" +
+			"ee",
 	)
 
 	_, _, err := GetMetadata(data)
@@ -179,14 +179,14 @@ func TestGetMetadata_InvalidLength(t *testing.T) {
 func TestGetMetadata_SingleFile_WithOptional(t *testing.T) {
 	data := []byte(
 		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
-		"4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name8:file.txt" +
-		"6:lengthi200e" +
-		"7:privatei1e" +
-		"6:md5sum3:abc" +
-		"ee",
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi200e" +
+			"7:privatei1e" +
+			"6:md5sum3:abc" +
+			"ee",
 	)
 
 	info, _, err := GetMetadata(data)
@@ -205,14 +205,14 @@ func TestGetMetadata_SingleFile_WithOptional(t *testing.T) {
 func TestGetMetadata_MultiFile(t *testing.T) {
 	data := []byte(
 		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
-		"4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name6:folder" +
-		"5:filesl" +
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name6:folder" +
+			"5:filesl" +
 			"d6:lengthi50e4:pathl5:a.txtee" +
-		"ee" +
-		"ee",
+			"ee" +
+			"ee",
 	)
 
 	info, _, err := GetMetadata(data)
@@ -231,15 +231,15 @@ func TestGetMetadata_MultiFile(t *testing.T) {
 func TestGetMetadata_MultiFile_WithMD5(t *testing.T) {
 	data := []byte(
 		"d8:announce55:http://bittorrent-test-tracker.codecrafters.io/announce" +
-		"4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name6:folder" +
-		"5:filesl" +
+			"4:infod" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name6:folder" +
+			"5:filesl" +
 			"d6:lengthi50e4:pathl5:a.txt" +
 			"e6:md5sum3:xyze" +
-		"e" +
-		"ee",
+			"e" +
+			"ee",
 	)
 
 	info, _, err := GetMetadata(data)
@@ -255,11 +255,11 @@ func TestGetMetadata_MultiFile_WithMD5(t *testing.T) {
 func TestGetMetadata_InvalidPieces(t *testing.T) {
 	data := []byte(
 		"d4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces5:short" +
-		"4:name4:file" +
-		"6:lengthi10e" +
-		"ee",
+			"12:piece lengthi4e" +
+			"6:pieces5:short" +
+			"4:name4:file" +
+			"6:lengthi10e" +
+			"ee",
 	)
 
 	_, _, err := GetMetadata(data)
@@ -271,10 +271,10 @@ func TestGetMetadata_InvalidPieces(t *testing.T) {
 func TestGetMetadata_Invalid_NoMode(t *testing.T) {
 	data := []byte(
 		"d4:infod" +
-		"12:piece lengthi4e" +
-		"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-		"4:name4:file" +
-		"ee",
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name4:file" +
+			"ee",
 	)
 
 	_, _, err := GetMetadata(data)

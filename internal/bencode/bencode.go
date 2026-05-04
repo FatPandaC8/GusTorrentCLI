@@ -14,7 +14,7 @@ type Value struct {
 	Dict map[string]Value
 
 	Start int
-	End int
+	End   int
 }
 
 // [internal] Returns Value, recursive position, error

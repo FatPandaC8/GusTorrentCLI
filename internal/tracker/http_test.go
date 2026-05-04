@@ -68,10 +68,10 @@ func TestGetPeers_Success(t *testing.T) {
 		"d" +
 			"8:announce" + fmt.Sprintf("%d:%s", len(server.URL), server.URL) +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-				"4:name8:file.txt" +
-				"6:lengthi100e" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
 			"ee",
 	)
 
@@ -97,10 +97,10 @@ func TestGetPeers_HTTPError(t *testing.T) {
 	data := []byte(
 		"d8:announce13:http://invalid" +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-				"4:name8:file.txt" +
-				"6:lengthi100e" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
 			"ee",
 	)
 
@@ -120,10 +120,10 @@ func TestGetPeers_InvalidBencodeResponse(t *testing.T) {
 		"d" +
 			"8:announce" + fmt.Sprintf("%d:%s", len(server.URL), server.URL) +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-				"4:name8:file.txt" +
-				"6:lengthi100e" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"6:lengthi100e" +
 			"ee",
 	)
 
@@ -144,13 +144,13 @@ func TestGetPeers_MultiFileTotalLength(t *testing.T) {
 		"d" +
 			"8:announce" + fmt.Sprintf("%d:%s", len(server.URL), server.URL) +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-				"4:name8:file.txt" +
-				"5:filesl" +
-					"d6:lengthi50e4:pathl9:file1.txtee" +
-					"d6:lengthi70e4:pathl9:file2.txtee" +
-				"e" +
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"5:filesl" +
+			"d6:lengthi50e4:pathl9:file1.txtee" +
+			"d6:lengthi70e4:pathl9:file2.txtee" +
+			"e" +
 			"ee",
 	)
 
@@ -164,10 +164,10 @@ func TestGetPeers_LengthNilPanic(t *testing.T) {
 	data := []byte(
 		"d8:announce11:http://test" +
 			"4:infod" +
-				"12:piece lengthi4e" +
-				"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
-				"4:name8:file.txt" +
-				"5:filesle" + // multi-file, no length
+			"12:piece lengthi4e" +
+			"6:pieces20:aaaaaaaaaaaaaaaaaaaa" +
+			"4:name8:file.txt" +
+			"5:filesle" + // multi-file, no length
 			"ee",
 	)
 

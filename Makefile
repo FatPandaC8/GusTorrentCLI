@@ -67,8 +67,5 @@ clean:
 fmt:
 	go fmt ./...
 
-vet:
-	go vet ./...
-
 # ALL 
 all: fmt vet test build

@@ -5,10 +5,14 @@ import (
 	"gustorrent/internal/metadata"
 	pr "gustorrent/internal/peer"
 	"gustorrent/internal/tracker"
+	"log"
+	"net"
 	"os"
 	"sync"
 	"time"
 )
+
+var retries int = 3
 
 func main() {
 	if len(os.Args) < 2 {
@@ -40,9 +44,16 @@ func main() {
 	}
 	lastPieceLength := totalSize - (totalPieces-1)*info.PieceLength
 
-	peers, err := tracker.GetPeers(data)
-	if err != nil {
-		panic(err)
+	var peers []tracker.Peer
+	for retries > 0 {
+		peers, err = tracker.GetPeers(data)
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			log.Println(err)
+			fmt.Println("Retries left:", retries)
+			retries--
+		} else {
+			break
+		}
 	}
 
 	fmt.Println("Peers:", len(peers))

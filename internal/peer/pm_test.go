@@ -2,6 +2,7 @@ package peer
 
 import (
 	"crypto/sha1"
+	"fmt"
 	"gustorrent/internal/metadata"
 	"gustorrent/internal/tracker"
 	"sync"
@@ -11,20 +12,36 @@ import (
 func TestPickPiece(t *testing.T) {
 	pm := NewPieceManager(5)
 
+	// simulate peer bitfield (has pieces 0 and 2)
 	bf := tracker.Bitfield{0b10100000}
+
+	pm.AddPeerBitfield(bf)
 
 	idx, ok := pm.PickPiece(bf)
 	if !ok {
 		t.Fatal("expected a piece")
 	}
 
-	if idx != 0 {
-		t.Fatalf("expected 0, got %d", idx)
+	// must be a valid piece in range
+	if idx < 0 || idx >= 5 {
+		t.Fatalf("invalid piece index: %d", idx)
 	}
 
-	// ensure state changed
+	// must be something the peer actually has
+	if !bf.Has(idx) {
+		t.Fatalf("picked piece %d not in peer bitfield", idx)
+	}
+
+	fmt.Println("PICKED: ", pm.states)
+
+	// must be marked downloading
 	if pm.states[idx] != Downloading {
-		t.Fatal("expected state to be Downloading")
+		t.Fatalf("expected state Downloading, got %v", pm.states[idx])
+	}
+
+	// must be marked inFlight
+	if !pm.inFlight[idx] {
+		t.Fatalf("expected piece to be inFlight")
 	}
 }
 

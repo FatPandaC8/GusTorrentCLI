@@ -13,7 +13,7 @@ func FuzzGetMetadata(f *testing.F) {
 			"ee",
 	))
 
-	f.Add([]byte("i123e")) // invalid root
+	f.Add([]byte("i123e"))        // invalid root
 	f.Add([]byte("d3:foo3:bare")) // missing info
 
 	f.Fuzz(func(t *testing.T, data []byte) {

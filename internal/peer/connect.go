@@ -108,7 +108,7 @@ func DownloadPiece(conn net.Conn, pieceIndex int, pieceLength int) ([]byte, erro
 
 func ReadMessage(conn net.Conn) (uint8, []byte, error) {
 	lenBuf := make([]byte, 4)
-	if _, err := io.ReadFull(conn, lenBuf); err != nil { // use this if tcp decides to split messages 
+	if _, err := io.ReadFull(conn, lenBuf); err != nil { // use this if tcp decides to split messages
 		return 0, nil, err
 	}
 
